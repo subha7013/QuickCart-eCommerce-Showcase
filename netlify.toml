@@ -3,6 +3,10 @@
   publish = "dist"
   command = "npm run build"
 
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "VITE_API_URL,VITE_RAZORPAY_KEY_ID,VITE_GOOGLE_MAPS_API_KEY"
+  SECRETS_SCAN_ENABLED = "false"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
