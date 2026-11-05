@@ -41,10 +41,16 @@ const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow non-browser requests (Postman, curl, server-to-server) or matched origins
+    if (
+      !origin ||
+      allowedOrigins.includes(origin) ||
+      origin.endsWith(".netlify.app") ||
+      origin.endsWith(".vercel.app")
+    ) {
       callback(null, true);
     } else {
-      callback(new Error("Not allowed by CORS"));
+      callback(null, false);
     }
   },
   credentials: true
