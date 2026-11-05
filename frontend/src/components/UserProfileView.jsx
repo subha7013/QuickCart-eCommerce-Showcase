@@ -21,6 +21,7 @@ export default function UserProfileView() {
         fetchProductStock,
         showToast,
         setCurrentView,
+        isAdmin,
         setIsAdmin,
         setAdminKey,
         setAdminProducts,
@@ -328,7 +329,7 @@ export default function UserProfileView() {
                             className={`qc-auth-tab ${authMode === 'signup' ? 'active' : ''}`}
                             onClick={() => setAuthMode('signup')}
                         >
-                            Register
+                            Signup
                         </button>
                         <button
                             className={`qc-auth-tab ${authMode === 'admin' ? 'active' : ''}`}
@@ -697,6 +698,17 @@ export default function UserProfileView() {
                             <Headphones size={18} />
                             <span>Customer Support & AI</span>
                         </button>
+
+                        {isAdmin && (
+                            <button
+                                className="qc-profile-tab-btn"
+                                onClick={() => setCurrentView('admin')}
+                                style={{ color: '#2563eb', fontWeight: 700 }}
+                            >
+                                <Shield size={18} />
+                                <span>Admin Dashboard</span>
+                            </button>
+                        )}
                     </div>
                 </aside>
 
