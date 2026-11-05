@@ -33,6 +33,8 @@ export function AppProvider({ children }) {
     const [appliedCoupon, setAppliedCoupon] = useState('');
     const [couponDiscount, setCouponDiscount] = useState(0);
     const [couponDiscountPercent, setCouponDiscountPercent] = useState(0);
+    const [couponMinOrderVal, setCouponMinOrderVal] = useState(0);
+    const [couponMaxDiscount, setCouponMaxDiscount] = useState(0);
     const [couponRecommendations, setCouponRecommendations] = useState([]);
     const [isFetchingRecs, setIsFetchingRecs] = useState(false);
     const [invoiceOrder, setInvoiceOrder] = useState(null);
@@ -343,28 +345,63 @@ export function AppProvider({ children }) {
             showToast('Enter a coupon code');
             return;
         }
-        const cartSubtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+        const cartSubtotal = cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 0), 0);
         const res = await api('/api/coupon/validate', {
             method: 'POST',
             body: JSON.stringify({ code, subtotal: cartSubtotal }),
         });
         if (res.ok) {
+            const mov = Number(res.minOrderVal) || 0;
+            const maxDisc = Number(res.maxDiscount) || 0;
+            const discPercent = Number(res.discountPercent) || 0;
             setAppliedCoupon(code.toUpperCase());
             setCouponDiscount(res.discount);
-            setCouponDiscountPercent(res.discountPercent || 0);
+            setCouponDiscountPercent(discPercent);
+            setCouponMinOrderVal(mov);
+            setCouponMaxDiscount(maxDisc);
             showToast(`Coupon "${code.toUpperCase()}" applied! Saved ₹${res.discount} 🎉`);
         } else {
             showToast(res.msg || 'Invalid coupon ❌');
         }
     }
 
-    function removeCoupon() {
+    function removeCoupon(silent = false) {
         setAppliedCoupon('');
         setCouponDiscount(0);
         setCouponDiscountPercent(0);
+        setCouponMinOrderVal(0);
+        setCouponMaxDiscount(0);
         setCouponCode('');
-        showToast('Coupon removed');
+        if (!silent) showToast('Coupon removed');
     }
+
+    // Auto-remove coupon when cart subtotal falls below minimum order value (MOV)
+    useEffect(() => {
+        if (!appliedCoupon) return;
+        const currentSubtotal = cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 0), 0);
+
+        if (cart.length === 0 || currentSubtotal <= 0) {
+            removeCoupon(true);
+            return;
+        }
+
+        if (couponMinOrderVal > 0 && currentSubtotal < couponMinOrderVal) {
+            const removedCode = appliedCoupon;
+            const requiredMov = couponMinOrderVal;
+            removeCoupon(true);
+            showToast(`Coupon "${removedCode}" removed: Minimum order value of ₹${requiredMov} not met ⚠️`);
+            return;
+        }
+
+        // Proportinally update discount if cart quantity changed while still >= MOV
+        if (couponDiscountPercent > 0) {
+            let updatedDiscount = (currentSubtotal * couponDiscountPercent) / 100;
+            if (couponMaxDiscount > 0) {
+                updatedDiscount = Math.min(updatedDiscount, couponMaxDiscount);
+            }
+            setCouponDiscount(Number(updatedDiscount.toFixed(2)));
+        }
+    }, [cart, appliedCoupon, couponMinOrderVal, couponDiscountPercent, couponMaxDiscount]);
 
     // Address Management
     async function addAddress(newAddr) {
@@ -657,6 +694,7 @@ export function AppProvider({ children }) {
         appliedCoupon, setAppliedCoupon,
         couponDiscount, setCouponDiscount,
         couponDiscountPercent, setCouponDiscountPercent,
+        couponMinOrderVal, setCouponMinOrderVal,
         couponRecommendations, setCouponRecommendations,
         isFetchingRecs, setIsFetchingRecs,
         invoiceOrder, setInvoiceOrder,

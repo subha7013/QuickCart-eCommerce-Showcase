@@ -211,32 +211,58 @@ export function printInvoiceDocument(order, currentUser = null, profilePhone = '
                 </div>
             </div>
             <script>
-                window.onload = function() {
+                var hasPrinted = false;
+                function triggerSafePrint() {
+                    if (hasPrinted) return;
+                    hasPrinted = true;
+                    setTimeout(function() {
+                        window.focus();
+                        window.print();
+                    }, 250);
+                }
+                window.addEventListener('load', function() {
                     var imgs = Array.from(document.images);
+                    if (!imgs || imgs.length === 0) {
+                        triggerSafePrint();
+                        return;
+                    }
                     Promise.all(imgs.map(function(img) {
                         if (img.complete) return Promise.resolve();
                         return new Promise(function(resolve) {
                             img.onload = resolve;
                             img.onerror = resolve;
                         });
-                    })).then(function() {
-                        setTimeout(function() {
-                            window.focus();
-                            window.print();
-                        }, 400);
-                    });
-                };
+                    })).then(triggerSafePrint);
+                });
             </script>
         </body>
         </html>
     `;
 
-    const printWin = window.open('', '_blank', 'width=900,height=1000');
-    if (printWin) {
-        printWin.document.open();
-        printWin.document.write(htmlContent);
-        printWin.document.close();
-    } else {
-        window.print();
+    // Render inside a hidden iframe to prevent the main window from turning white
+    let iframe = document.getElementById('qc-invoice-print-frame');
+    if (iframe) {
+        iframe.remove();
+    }
+    iframe = document.createElement('iframe');
+    iframe.id = 'qc-invoice-print-frame';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
+    document.body.appendChild(iframe);
+
+    try {
+        const doc = iframe.contentWindow?.document || iframe.contentDocument;
+        if (doc) {
+            doc.open();
+            doc.write(htmlContent);
+            doc.close();
+        }
+    } catch (e) {
+        console.error('Failed to populate print iframe:', e);
     }
 }

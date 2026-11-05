@@ -769,7 +769,9 @@ app.post("/api/coupon/validate", requireAuth, async (req, res) => {
   res.json({
     ok: true,
     discount: Number(discountAmount.toFixed(2)),
-    discountPercent: coupon.discount
+    discountPercent: coupon.discount,
+    minOrderVal: coupon.minOrderVal || 0,
+    maxDiscount: coupon.maxDiscount || 0
   });
 });
 

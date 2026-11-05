@@ -18,6 +18,7 @@ export default function CartView() {
         setCouponCode,
         appliedCoupon,
         couponDiscount,
+        couponMinOrderVal,
         applyCoupon,
         removeCoupon,
         couponRecommendations,
@@ -249,7 +250,7 @@ export default function CartView() {
                                         <Check size={16} className="qc-check-green" />
                                         <div>
                                             <strong>{appliedCoupon} Applied!</strong>
-                                            <small>You saved ₹{couponDiscount}</small>
+                                            <small>You saved ₹{couponDiscount}{couponMinOrderVal > 0 ? ` · Min order ₹${couponMinOrderVal}` : ''}</small>
                                         </div>
                                     </div>
                                     <button className="qc-remove-coupon-btn" onClick={removeCoupon}>

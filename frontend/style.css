@@ -4690,6 +4690,36 @@ html, body {
     padding-top: 16px;
 }
 
+@media print {
+    body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+    }
+    .no-print,
+    .qc-header,
+    .qc-footer,
+    .qc-bottom-nav,
+    .qc-announcement-bar,
+    .invoice-modal-toolbar {
+        display: none !important;
+    }
+    .invoice-modal-backdrop {
+        position: static !important;
+        background: none !important;
+        backdrop-filter: none !important;
+        padding: 0 !important;
+        display: block !important;
+    }
+    .invoice-modal-card {
+        max-width: 100% !important;
+        max-height: none !important;
+        overflow: visible !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+}
+
 /* ==========================================================================
    USER AUTH & LOGIN SECTION
    ========================================================================== */
@@ -8641,6 +8671,36 @@ html, body {
     scrollbar-width: none;
     border-top: 1px solid #e2e8f0;
     padding-top: 16px;
+}
+
+@media print {
+    body {
+        background: #ffffff !important;
+        color: #0f172a !important;
+    }
+    .no-print,
+    .qc-header,
+    .qc-footer,
+    .qc-bottom-nav,
+    .qc-announcement-bar,
+    .invoice-modal-toolbar {
+        display: none !important;
+    }
+    .invoice-modal-backdrop {
+        position: static !important;
+        background: none !important;
+        backdrop-filter: none !important;
+        padding: 0 !important;
+        display: block !important;
+    }
+    .invoice-modal-card {
+        max-width: 100% !important;
+        max-height: none !important;
+        overflow: visible !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+    }
 }
 
 .qc-categories-nav-tabs::-webkit-scrollbar {
