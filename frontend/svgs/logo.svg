@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="350px" height="300px" viewBox="0 0 520 100" role="img" aria-label="SpeedMart Logo Green">
+  <title>SpeedMart Logo Green</title>
+
+  <defs>
+    <linearGradient id="grad-green" x1="0" x2="1">
+      <stop offset="0%" stop-color="blue"/>
+      <stop offset="100%" stop-color="white"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Arrow/Speed Symbol -->
+  <g transform="translate(10,20)">
+    <path d="M0 20 L40 0 L32 14 H80 L40 40 L48 26 H0 Z"
+          fill="url(#grad-green)"/>
+  </g>
+
+  <!-- Text -->
+  <text x="100" y="65"
+        font-family="Montserrat, Arial, sans-serif"
+        font-weight="900"
+        font-size="42"
+        fill="#dcd5e1">
+    SPEED
+  </text>
+
+  <text x="270" y="65"
+        font-family="Montserrat, Arial, sans-serif"
+        font-weight="900"
+        font-size="42"
+        fill="url(#grad-green)">
+    MART
+  </text>
+
+  <!-- Tagline -->
+  <text x="102" y="85"
+        font-family="Montserrat, Arial, sans-serif"
+        font-size="17"
+        fill="#dcd5e1">
+    Delivering gadgets at lightning speed
+  </text>
+</svg>
