@@ -4,7 +4,7 @@ import {
     AlertCircle, MapPin, CheckCircle2, ChevronRight, Gift, Lock,
     Check, Percent, ShieldCheck
 } from 'lucide-react';
-import { calculateDeliveryFee } from '../utils/helpers.js';
+import { calculateDeliveryFee, formatProductImage } from '../utils/helpers.js';
 import { useApp } from '../context/AppContext.jsx';
 
 export default function CartView() {
@@ -166,10 +166,15 @@ export default function CartView() {
                                             {/* Product cell */}
                                             <div className="qc-cart-prod-cell">
                                                 <img
-                                                    src={item.image || '/assets/placeholder.jpg'}
+                                                    src={formatProductImage(item.image)}
                                                     alt={item.name}
                                                     className="qc-cart-img"
-                                                    onError={(e) => { e.target.src = 'https://placehold.co/80x80?text=Item'; }}
+                                                    onError={(e) => {
+                                                        if (!e.target.dataset.tried) {
+                                                            e.target.dataset.tried = 'true';
+                                                            e.target.src = '/assets/banana.jpg';
+                                                        }
+                                                    }}
                                                 />
                                                 <div className="qc-cart-info">
                                                     <h4>{item.name}</h4>

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { api } from '../utils/api.js';
 import { useApp } from '../context/AppContext.jsx';
+import { formatProductImage } from '../utils/helpers.js';
 import SupportChatbot from './SupportChatbot.jsx';
 
 export default function UserProfileView() {
@@ -788,9 +789,14 @@ export default function UserProfileView() {
                                                     {order.items?.map((item, idx) => (
                                                         <div key={idx} className="qc-order-item-pill">
                                                             <img
-                                                                src={item.image || '/assets/placeholder.jpg'}
+                                                                src={formatProductImage(item.image)}
                                                                 alt={item.name}
-                                                                onError={(e) => { e.target.src = 'https://placehold.co/40x40?text=Item'; }}
+                                                                onError={(e) => {
+                                                                    if (!e.target.dataset.tried) {
+                                                                        e.target.dataset.tried = 'true';
+                                                                        e.target.src = '/assets/banana.jpg';
+                                                                    }
+                                                                }}
                                                             />
                                                             <span>{item.name} × {item.qty}</span>
                                                         </div>
@@ -1079,10 +1085,15 @@ export default function UserProfileView() {
                                     {wishlist.map((item) => (
                                         <div key={item.id} className="qc-wishlist-item-card">
                                             <img
-                                                src={item.image || '/assets/placeholder.jpg'}
+                                                src={formatProductImage(item.image)}
                                                 alt={item.name}
                                                 className="qc-wishlist-item-img"
-                                                onError={(e) => { e.target.src = 'https://placehold.co/120x120?text=Item'; }}
+                                                onError={(e) => {
+                                                    if (!e.target.dataset.tried) {
+                                                        e.target.dataset.tried = 'true';
+                                                        e.target.src = '/assets/banana.jpg';
+                                                    }
+                                                }}
                                             />
                                             <div className="qc-wishlist-item-info">
                                                 <h4>{item.name}</h4>

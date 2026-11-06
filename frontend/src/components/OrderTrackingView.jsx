@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 import { api } from '../utils/api.js';
+import { formatProductImage } from '../utils/helpers.js';
 
 export default function OrderTrackingView() {
     const {
@@ -353,10 +354,15 @@ export default function OrderTrackingView() {
                     {order.items?.map((item, idx) => (
                         <div key={idx} className="qc-summary-item-row">
                             <img
-                                src={item.image || '/assets/placeholder.jpg'}
+                                src={formatProductImage(item.image)}
                                 alt={item.name}
                                 className="qc-summary-item-img"
-                                onError={(e) => { e.target.src = 'https://placehold.co/60x60?text=Item'; }}
+                                onError={(e) => {
+                                    if (!e.target.dataset.tried) {
+                                        e.target.dataset.tried = 'true';
+                                        e.target.src = '/assets/banana.jpg';
+                                    }
+                                }}
                             />
                             <div className="qc-summary-item-info">
                                 <h5>{item.name}</h5>

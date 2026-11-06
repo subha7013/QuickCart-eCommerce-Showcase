@@ -5,7 +5,7 @@ import {
     Zap, Navigation, Clock, CreditCard, Banknote
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
-import { calculateDeliveryFee } from '../utils/helpers.js';
+import { calculateDeliveryFee, formatProductImage } from '../utils/helpers.js';
 import { openRazorpayCheckout } from '../utils/razorpay.js';
 import { api } from '../utils/api.js';
 
@@ -589,9 +589,14 @@ export default function AddressSelectView() {
                             {cart.map((item) => (
                                 <div key={item.id} className="qc-summary-item-row">
                                     <img
-                                        src={item.image || '/assets/placeholder.jpg'}
+                                        src={formatProductImage(item.image)}
                                         alt={item.name}
-                                        onError={(e) => { e.target.src = 'https://placehold.co/60x60?text=Item'; }}
+                                        onError={(e) => {
+                                            if (!e.target.dataset.tried) {
+                                                e.target.dataset.tried = 'true';
+                                                e.target.src = '/assets/banana.jpg';
+                                            }
+                                        }}
                                     />
                                     <div className="qc-sum-item-info">
                                         <p className="qc-sum-name">{item.name}</p>

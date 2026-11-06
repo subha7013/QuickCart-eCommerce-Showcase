@@ -1,6 +1,7 @@
 import React from 'react';
 import { Heart, Plus, Minus, Star, Zap } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
+import { formatProductImage } from '../utils/helpers.js';
 
 export default function ProductCard({ product }) {
     const {
@@ -34,10 +35,15 @@ export default function ProductCard({ product }) {
             {/* Top Image Box */}
             <div className="qc-prod-img-box">
                 <img
-                    src={product.image || '/assets/placeholder.jpg'}
+                    src={formatProductImage(product.image)}
                     alt={product.name}
                     className="qc-prod-img"
-                    onError={(e) => { e.target.src = 'https://placehold.co/240x240?text=' + encodeURIComponent(product.name || 'Item'); }}
+                    onError={(e) => {
+                        if (!e.target.dataset.tried) {
+                            e.target.dataset.tried = 'true';
+                            e.target.src = '/assets/banana.jpg';
+                        }
+                    }}
                     loading="lazy"
                 />
 
