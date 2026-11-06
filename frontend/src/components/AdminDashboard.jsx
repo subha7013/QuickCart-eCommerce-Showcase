@@ -3072,7 +3072,7 @@ export default function AdminDashboard() {
                         <div className="qc-card" style={{ background: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                             <div className="qc-table-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                                 <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>Database Gift Cards & Vouchers ({adminGiftCards.length})</h4>
-                                <span className="qc-text-muted" style={{ fontSize: '12px' }}>Live MongoDB Storage</span>
+                
                             </div>
 
                             {isLoadingGiftCards ? (
