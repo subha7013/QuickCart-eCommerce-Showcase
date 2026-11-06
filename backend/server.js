@@ -837,10 +837,30 @@ app.get("/api/coupon/recommendations", requireAuth, async (req, res) => {
 });
 
 // -------------------- PRODUCT / INVENTORY ROUTES --------------------
+function normalizeProductImagePath(raw) {
+  if (!raw || typeof raw !== "string") return "/assets/banana.jpg";
+  let img = raw.trim();
+  if (!img) return "/assets/banana.jpg";
+  if (img.startsWith("data:image/") || img.startsWith("http://") || img.startsWith("https://")) {
+    return img;
+  }
+  img = img.replace(/\\/g, "/");
+  img = img.replace(/^(\.\/|\/)+/, "");
+  img = img.replace(/^(frontend\/public\/|frontend\/|public\/)/i, "");
+  if (img === "assets/potatoes.jpg" || img === "potatoes.jpg") return "/assets/potato.jpg";
+  if (img === "assets/blacktee.jpg" || img === "blacktee.jpg") return "/assets/Tshirts1.jpg";
+  if (img.startsWith("assets/")) return "/" + img;
+  return "/assets/" + img;
+}
+
 app.get("/api/products", async (req, res) => {
   try {
     const products = await Product.find({}, { __v: 0 }).lean();
-    res.json({ ok: true, products });
+    const formatted = products.map(p => ({
+      ...p,
+      image: normalizeProductImagePath(p.image)
+    }));
+    res.json({ ok: true, products: formatted });
   } catch (error) {
     console.error("GET /api/products error:", error);
     res.json({ ok: false, msg: "Failed to fetch products" });
@@ -850,7 +870,11 @@ app.get("/api/products", async (req, res) => {
 app.get("/api/admin/products", requireAdmin, async (req, res) => {
   try {
     const products = await Product.find({}).lean();
-    res.json({ ok: true, products });
+    const formatted = products.map(p => ({
+      ...p,
+      image: normalizeProductImagePath(p.image)
+    }));
+    res.json({ ok: true, products: formatted });
   } catch (error) {
     console.error("GET /api/admin/products error:", error);
     res.json({ ok: false, msg: "Failed to fetch products" });
@@ -885,7 +909,7 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
       category: category.trim(),
       subcategory: (subcategory || '').trim(),
       stock: stockNum,
-      image: image || '',
+      image: normalizeProductImagePath(image),
       limitPerOrder: limitNum,
       offerTag: offerTag || '',
       discountPercent: Number(discountPercent) || Math.max(0, Math.round(((mrpNum - priceNum) / mrpNum) * 100)),
@@ -924,7 +948,7 @@ app.put("/api/admin/products/:id", requireAdmin, async (req, res) => {
     if (name) updateData.name = name.trim();
     if (category) updateData.category = category.trim();
     if (subcategory !== undefined) updateData.subcategory = subcategory.trim();
-    if (image !== undefined) updateData.image = image;
+    if (image !== undefined) updateData.image = normalizeProductImagePath(image);
 
     const product = await Product.findOneAndUpdate({ id: req.params.id }, updateData, { new: true });
     if (!product) return res.json({ ok: false, msg: "Product not found" });

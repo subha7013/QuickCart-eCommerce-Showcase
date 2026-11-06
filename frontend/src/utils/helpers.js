@@ -8,6 +8,79 @@ export function calculateDeliveryFee(subtotal) {
     }
 }
 
+export function formatProductImage(rawImage) {
+    if (!rawImage || typeof rawImage !== 'string') {
+        return '/assets/banana.jpg';
+    }
+    let img = rawImage.trim();
+    if (!img) return '/assets/banana.jpg';
+
+    // Data URLs (Base64) - preserve as-is
+    if (img.startsWith('data:image/')) {
+        return img;
+    }
+
+    // Direct HTTP / HTTPS URLs - preserve as-is
+    if (img.startsWith('http://') || img.startsWith('https://')) {
+        return img;
+    }
+
+    // Normalize Windows backslashes
+    img = img.replace(/\\/g, '/');
+
+    // Strip leading ./ or /
+    img = img.replace(/^(\.\/|\/)+/, '');
+
+    // Strip redundant repository or build paths
+    img = img.replace(/^(frontend\/public\/|frontend\/|public\/)/i, '');
+
+    // Fix plural typos (potatoes.jpg -> potato.jpg, etc.)
+    if (img === 'assets/potatoes.jpg' || img === 'potatoes.jpg') {
+        return '/assets/potato.jpg';
+    }
+    if (img === 'assets/blacktee.jpg' || img === 'blacktee.jpg') {
+        return '/assets/Tshirts1.jpg';
+    }
+
+    // Ensure leading slash if starting with assets/
+    if (img.startsWith('assets/')) {
+        return '/' + img;
+    }
+
+    // Bare filenames (e.g. "mango.jpg", "banana.jpg")
+    return '/assets/' + img;
+}
+
+export const AVAILABLE_STORE_ASSETS = [
+    { label: '🥭 Alphonso Mango', path: '/assets/mango.jpg', category: 'Groceries' },
+    { label: '🍌 Daily Fresh Banana', path: '/assets/banana.jpg', category: 'Groceries' },
+    { label: '🍎 Fresh Apple', path: '/assets/apple.jpg', category: 'Groceries' },
+    { label: '🥔 Fresh Potato', path: '/assets/potato.jpg', category: 'Groceries' },
+    { label: '🍅 Organic Tomato', path: '/assets/tomato.jpg', category: 'Groceries' },
+    { label: '🍆 Fresh Brinjal', path: '/assets/brinjal.jpg', category: 'Groceries' },
+    { label: '🧄 Fresh Garlic', path: '/assets/garlic.jpg', category: 'Groceries' },
+    { label: '🫚 Fresh Ginger', path: '/assets/ginger.jpg', category: 'Groceries' },
+    { label: '🌶️ Bullet Chilli', path: '/assets/chilli2.jpg', category: 'Groceries' },
+    { label: '🌶️ Green Chilli', path: '/assets/chilli1.jpg', category: 'Groceries' },
+    { label: '🥒 Organic Parwal', path: '/assets/parwal.jpg', category: 'Groceries' },
+    { label: '🎃 Sweet Pumpkin', path: '/assets/pumpkin.jpg', category: 'Groceries' },
+    { label: '📱 Dual Port Adapter', path: '/assets/charger1.jpg', category: 'Electronics' },
+    { label: '📱 Samsung Adapter', path: '/assets/charger2.jpg', category: 'Electronics' },
+    { label: '📱 Apple 20W Adapter', path: '/assets/charger3.jpg', category: 'Electronics' },
+    { label: '🎧 Realme Buds Q', path: '/assets/earbuds1.jpg', category: 'Electronics' },
+    { label: '🎧 Boult Earbuds', path: '/assets/earbuds2.jpg', category: 'Electronics' },
+    { label: '🎧 Wireless Earbuds', path: '/assets/earbuds3.jpg', category: 'Electronics' },
+    { label: '🎧 Studio Headset 1', path: '/assets/headset1.jpg', category: 'Electronics' },
+    { label: '🎧 Studio Headset 2', path: '/assets/headset2.jpg', category: 'Electronics' },
+    { label: '📱 Nothing 3a Pro Phone', path: '/assets/nothing.jpg', category: 'Electronics' },
+    { label: '🔋 Powerbank 10000mAh', path: '/assets/powerbank1.jpg', category: 'Electronics' },
+    { label: '🔋 Powerbank 20000mAh', path: '/assets/powerbank2.jpg', category: 'Electronics' },
+    { label: '🔊 Soundbar Express', path: '/assets/soundbar1.jpg', category: 'Electronics' },
+    { label: '⌚ Smartwatch Fit', path: '/assets/smartwatch1.jpg', category: 'Electronics' },
+    { label: '👕 Roadster T-Shirt', path: '/assets/Tshirts1.jpg', category: 'Fashion' },
+    { label: '👟 Campus Running Shoes', path: '/assets/Shoes1.jpg', category: 'Fashion' },
+];
+
 export function formatDate(dateVal) {
     if (!dateVal) return new Date().toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
     const d = new Date(dateVal);
@@ -64,7 +137,10 @@ export function printInvoiceDocument(order, currentUser = null, profilePhone = '
         const qty = Number(item.qty || item.quantity) || 1;
         const price = Number(item.price) || 0;
         const total = qty * price;
-        const imgUrl = item.image ? (item.image.startsWith('http') ? item.image : `${window.location.origin}${item.image}`) : fallbackProductLogo;
+        const formattedImg = formatProductImage(item.image);
+        const imgUrl = (formattedImg.startsWith('http') || formattedImg.startsWith('data:'))
+            ? formattedImg
+            : `${window.location.origin}${formattedImg}`;
 
         return `
             <tr>

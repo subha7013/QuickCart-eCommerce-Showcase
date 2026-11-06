@@ -11,6 +11,7 @@ import {
 import { api, BASE_URL } from '../utils/api.js';
 import { useApp } from '../context/AppContext.jsx';
 import { FESTIVAL_THEMES } from '../utils/themeEngine.js';
+import { formatProductImage, AVAILABLE_STORE_ASSETS } from '../utils/helpers.js';
 
 export default function AdminDashboard() {
     const {
@@ -1022,13 +1023,18 @@ export default function AdminDashboard() {
 
             const method = editingProduct ? 'PUT' : 'POST';
 
+            const payload = {
+                ...productForm,
+                image: formatProductImage(productForm.image)
+            };
+
             const res = await fetch(url, {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
                     'x-admin-key': adminKey
                 },
-                body: JSON.stringify(productForm),
+                body: JSON.stringify(payload),
                 credentials: 'include'
             });
             const data = await res.json();
@@ -1362,10 +1368,15 @@ export default function AdminDashboard() {
                                         <tr key={p.id}>
                                             <td className="qc-table-prod-name">
                                                 <img
-                                                    src={p.image || '/assets/placeholder.jpg'}
+                                                    src={formatProductImage(p.image)}
                                                     alt={p.name}
                                                     className="qc-table-thumb"
-                                                    onError={(e) => { e.target.src = 'https://placehold.co/40x40?text=Item'; }}
+                                                    onError={(e) => {
+                                                        if (!e.target.dataset.tried) {
+                                                            e.target.dataset.tried = 'true';
+                                                            e.target.src = '/assets/banana.jpg';
+                                                        }
+                                                    }}
                                                 />
                                                 <div>
                                                     <strong>{p.name}</strong>
@@ -3349,15 +3360,57 @@ export default function AdminDashboard() {
 
                             <div className="qc-form-group">
                                 <label>Product Image</label>
-                                <input
-                                    type="text"
-                                    placeholder="Paste a direct public image URL or use gallery upload"
-                                    value={productForm.image}
-                                    onChange={(e) => {
-                                        setProductForm({ ...productForm, image: e.target.value });
-                                        setProductImagePreviewError(false);
-                                    }}
-                                />
+                                
+                                <div style={{ marginBottom: '10px' }}>
+                                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                                        ⚡ Select from Built-in Store Assets
+                                    </label>
+                                    <select
+                                        style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#f8fafc' }}
+                                        onChange={(e) => {
+                                            if (e.target.value) {
+                                                setProductForm({ ...productForm, image: e.target.value });
+                                                setProductImagePreviewError(false);
+                                            }
+                                        }}
+                                        value={AVAILABLE_STORE_ASSETS.some(a => a.path === productForm.image) ? productForm.image : ''}
+                                    >
+                                        <option value="">-- Choose a built-in catalog image --</option>
+                                        {AVAILABLE_STORE_ASSETS.map((asset) => (
+                                            <option key={asset.path} value={asset.path}>
+                                                {asset.label} ({asset.path})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. /assets/mango.jpg or https://..."
+                                        value={productForm.image}
+                                        onChange={(e) => {
+                                            setProductForm({ ...productForm, image: e.target.value });
+                                            setProductImagePreviewError(false);
+                                        }}
+                                        onBlur={(e) => {
+                                            if (e.target.value && !e.target.value.startsWith('http') && !e.target.value.startsWith('data:')) {
+                                                setProductForm({ ...productForm, image: formatProductImage(e.target.value) });
+                                            }
+                                        }}
+                                        style={{ flex: 1 }}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="qc-cta-button small"
+                                        onClick={() => productImageInputRef.current?.click()}
+                                        disabled={isProcessingProductImage}
+                                        title="Upload custom image from device"
+                                    >
+                                        <UploadCloud size={15} />
+                                        <span>{isProcessingProductImage ? 'Processing...' : 'Upload File'}</span>
+                                    </button>
+                                </div>
                                 <input
                                     ref={productImageInputRef}
                                     type="file"
@@ -3365,27 +3418,17 @@ export default function AdminDashboard() {
                                     onChange={handleProductImageUpload}
                                     style={{ display: 'none' }}
                                 />
-                                <button
-                                    type="button"
-                                    className="qc-cta-button small"
-                                    onClick={() => productImageInputRef.current?.click()}
-                                    disabled={isProcessingProductImage}
-                                    style={{ marginTop: '10px' }}
-                                >
-                                    <UploadCloud size={15} />
-                                    <span>{isProcessingProductImage ? 'Preparing image...' : 'Choose from gallery'}</span>
-                                </button>
                                 <small style={{ display: 'block', marginTop: '7px', color: '#64748b' }}>
-                                    Use a direct image URL. Google search-result or webpage links are not image files.
+                                    Pick from the asset dropdown above, upload a file, or enter an image path (e.g. /assets/mango.jpg or an https:// URL).
                                 </small>
                                 {productForm.image && (
                                     <div className="qc-product-img-preview-row">
                                         {productImagePreviewError ? (
-                                            <span>Image could not load. Check the URL or choose an image from your gallery.</span>
+                                            <span>Image could not load. Check the URL or choose an image from store assets.</span>
                                         ) : (
-                                            <img src={productForm.image} alt="Product preview" onError={() => setProductImagePreviewError(true)} />
+                                            <img src={formatProductImage(productForm.image)} alt="Product preview" onError={() => setProductImagePreviewError(true)} />
                                         )}
-                                        {!productForm.image.startsWith('data:') && <span>Image Path: {productForm.image}</span>}
+                                        {!productForm.image.startsWith('data:') && <span>Resolved Path: {formatProductImage(productForm.image)}</span>}
                                     </div>
                                 )}
                             </div>

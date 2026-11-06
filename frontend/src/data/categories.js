@@ -22,7 +22,7 @@ export const categories = [
         description: 'T-shirts, shoes and everyday style essentials.',
         subcategories: ['Tshirts', 'Jeans', 'Shoes'],
         products: [
-            { id: 'f1', name: 'Classic Black Tee', price: 399, image: '/assets/blacktee.jpg', subcategory: 'Tshirts', stock: 15 },
+            { id: 'f1', name: 'Classic Black Tee', price: 399, image: '/assets/Tshirts1.jpg', subcategory: 'Tshirts', stock: 15 },
         ],
     },
     {
@@ -31,7 +31,7 @@ export const categories = [
         description: 'Fresh picks and daily household staples.',
         subcategories: ['Vegetables', 'Fruits', 'Chocolates', 'Non Veg', 'Dairy', 'Ready to eat', 'Oil & Ghee', 'Snacks', 'Biscuits'],
         products: [
-            { id: 'grocery1', name: 'Organic Potato (1000 g.)', price: 30, image: '/assets/potatoes.jpg', subcategory: 'Vegetables', stock: 50 },
+            { id: 'grocery1', name: 'Organic Potato (1000 g.)', price: 30, image: '/assets/potato.jpg', subcategory: 'Vegetables', stock: 50 },
             { id: 'grocery2', name: 'Organic Tomato (500 g.)', price: 30, image: '/assets/tomato.jpg', subcategory: 'Vegetables', stock: 30 },
             { id: 'grocery3', name: 'Organic Tomato (1000 g.)', price: 50, image: '/assets/tomato.jpg', subcategory: 'Vegetables', stock: 20 },
             { id: 'grocery4', name: 'Organic Parwal (500 g.)', price: 30, image: '/assets/parwal.jpg', subcategory: 'Vegetables', stock: 25 },
