@@ -35,6 +35,7 @@ const PRODUCTS = [
   { id: "grocery10", name: "Brinjal (500 g.)",           category: "Groceries",   subcategory: "Vegetables",  price: 30,   image: "/assets/brinjal.jpg",   stock: 25 },
   { id: "fruits1",   name: "Daily Fresh Banana (500 g.)", category: "Groceries",  subcategory: "Fruits",      price: 30,   image: "/assets/banana.jpg",    stock: 30 },
   { id: "fruits2",   name: "Apple (250 g.)",             category: "Groceries",   subcategory: "Fruits",      price: 40,   image: "/assets/apple.jpg",     stock: 20 },
+  { id: "fruits3",   name: "Mango (500 g.)",             category: "Groceries",   subcategory: "Fruits",      price: 50,   image: "/assets/mango.jpg",     stock: 25 },
 
 ];
 
