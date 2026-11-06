@@ -242,7 +242,6 @@ export default function AddressSelectView() {
                 },
                 onDismiss: () => {
                     setIsProcessingPayment(false);
-                    showToast('Razorpay checkout window closed');
                 }
             });
         } catch (err) {
