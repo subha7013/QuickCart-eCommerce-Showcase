@@ -1,26 +1,43 @@
 import React from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ShoppingBag, ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 
 function FloatingCartBar() {
     const { cartItemCount, cartTotal, currentView, setCurrentView } = useApp();
 
-    if (cartItemCount <= 0 || currentView === 'cart' || currentView === 'checkout') {
+    if (cartItemCount <= 0 || ['cart', 'checkout', 'select-address'].includes(currentView)) {
         return null;
     }
 
     return (
-        <div className="floating-cart-bar" onClick={() => setCurrentView('cart')}>
+        <div
+            className="floating-cart-bar"
+            onClick={() => setCurrentView('cart')}
+            role="button"
+            aria-label="View Cart"
+            tabIndex={0}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setCurrentView('cart');
+                }
+            }}
+        >
             <div className="floating-cart-info">
-                <span className="floating-cart-count">
-                    {cartItemCount} {cartItemCount === 1 ? 'ITEM' : 'ITEMS'}
-                </span>
-                <span className="floating-cart-total">₹{cartTotal}</span>
+                <div className="floating-cart-icon-wrap">
+                    <ShoppingBag size={15} />
+                </div>
+                <div className="floating-cart-details">
+                    <span className="floating-cart-count">
+                        {cartItemCount} {cartItemCount === 1 ? 'ITEM' : 'ITEMS'}
+                    </span>
+                    <span className="floating-cart-divider">•</span>
+                    <span className="floating-cart-total">₹{cartTotal}</span>
+                </div>
             </div>
             <div className="floating-cart-action">
-                <span>
-                    View Cart <ChevronRight size={16} style={{ display: 'inline', verticalAlign: 'middle' }} />
-                </span>
+                <span>View Cart</span>
+                <ChevronRight size={15} className="floating-cart-chevron" />
             </div>
         </div>
     );

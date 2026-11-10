@@ -15,7 +15,8 @@ import RazorpayModal from './components/RazorpayModal.jsx';
 import { AppProvider, useApp } from './context/AppContext.jsx';
 
 function AppContent() {
-    const { currentView, toast, festivalTheme, currentThemeConfig } = useApp();
+    const { currentView, toast, festivalTheme, currentThemeConfig, cartItemCount } = useApp();
+    const hasFloatingCart = cartItemCount > 0 && !['cart', 'checkout', 'select-address'].includes(currentView);
 
     const dynamicThemeStyles = currentThemeConfig ? {
         '--qc-primary': currentThemeConfig.primaryColor,
@@ -29,7 +30,7 @@ function AppContent() {
     } : undefined;
 
     return (
-        <div className="qc-app-shell" data-theme={festivalTheme} style={dynamicThemeStyles}>
+        <div className={`qc-app-shell ${hasFloatingCart ? 'has-floating-cart' : ''}`} data-theme={festivalTheme} style={dynamicThemeStyles}>
             <Navbar />
             <MobileDrawer />
 
