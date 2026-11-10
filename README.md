@@ -332,3 +332,4 @@ Developed with ❤️ by **Subhasish Nath**
 - **Repository**: [QuickCart-eCommerce-Showcase](https://github.com/subha7013/QuickCart-eCommerce-Showcase)
 
 Licensed under the [ISC License](LICENSE).
+
