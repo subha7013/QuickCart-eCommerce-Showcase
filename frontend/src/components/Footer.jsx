@@ -57,20 +57,30 @@ export default function Footer() {
                     <div className="qc-footer-col">
                         <h4>Shop Categories</h4>
                         <ul>
-                            <li onClick={() => { setSelectedCategoryName('Groceries'); setSelectedSubcategory(null); setCurrentView('home'); }}>
-                                Farm Fresh Groceries
+                            <li>
+                                <a href="/categories?cat=Groceries" onClick={(e) => { e.preventDefault(); setSelectedCategoryName('Groceries'); setSelectedSubcategory(null); setCurrentView('categories'); }}>
+                                    Farm Fresh Groceries
+                                </a>
                             </li>
-                            <li onClick={() => { setSelectedCategoryName('Electronics'); setSelectedSubcategory(null); setCurrentView('home'); }}>
-                                Chargers & Tech Accessories
+                            <li>
+                                <a href="/categories?cat=Electronics" onClick={(e) => { e.preventDefault(); setSelectedCategoryName('Electronics'); setSelectedSubcategory(null); setCurrentView('categories'); }}>
+                                    Chargers & Tech Accessories
+                                </a>
                             </li>
-                            <li onClick={() => { setSelectedCategoryName('Fashion'); setSelectedSubcategory(null); setCurrentView('home'); }}>
-                                Trending Fashion & Footwear
+                            <li>
+                                <a href="/categories?cat=Fashion" onClick={(e) => { e.preventDefault(); setSelectedCategoryName('Fashion'); setSelectedSubcategory(null); setCurrentView('categories'); }}>
+                                    Trending Fashion & Footwear
+                                </a>
                             </li>
-                            <li onClick={() => { setSelectedCategoryName('Groceries'); setSelectedSubcategory('Vegetables'); setCurrentView('home'); }}>
-                                Organic Vegetables
+                            <li>
+                                <a href="/categories?cat=Groceries&sub=Vegetables" onClick={(e) => { e.preventDefault(); setSelectedCategoryName('Groceries'); setSelectedSubcategory('Vegetables'); setCurrentView('categories'); }}>
+                                    Organic Vegetables
+                                </a>
                             </li>
-                            <li onClick={() => { setSelectedCategoryName('Groceries'); setSelectedSubcategory('Fruits'); setCurrentView('home'); }}>
-                                Daily Fresh Fruits
+                            <li>
+                                <a href="/categories?cat=Groceries&sub=Fruits" onClick={(e) => { e.preventDefault(); setSelectedCategoryName('Groceries'); setSelectedSubcategory('Fruits'); setCurrentView('categories'); }}>
+                                    Daily Fresh Fruits
+                                </a>
                             </li>
                         </ul>
                     </div>
@@ -78,22 +88,22 @@ export default function Footer() {
                     <div className="qc-footer-col">
                         <h4>Customer Care & Services</h4>
                         <ul>
-                            <li onClick={() => setCurrentView('profile')}>My Orders & Live Tracking</li>
-                            <li onClick={() => setCurrentView('profile')}>Saved Delivery Addresses</li>
-                            <li onClick={() => setCurrentView('profile')}>Free Cash Wallet & Vouchers</li>
-                            <li onClick={() => setCurrentView('profile')}>24x7 AI Chatbot Support</li>
-                            <li onClick={() => setCurrentView('profile')}>Privacy Center & Security</li>
+                            <li><a href="/orders" onClick={(e) => { e.preventDefault(); setCurrentView('orders'); }}>My Orders & Live Tracking</a></li>
+                            <li><a href="/profile" onClick={(e) => { e.preventDefault(); setCurrentView('profile'); }}>Saved Delivery Addresses</a></li>
+                            <li><a href="/profile" onClick={(e) => { e.preventDefault(); setCurrentView('profile'); }}>Free Cash Wallet & Vouchers</a></li>
+                            <li><a href="/profile" onClick={(e) => { e.preventDefault(); setCurrentView('profile'); }}>24x7 AI Chatbot Support</a></li>
+                            <li><a href="/profile" onClick={(e) => { e.preventDefault(); setCurrentView('profile'); }}>Privacy Center & Security</a></li>
                         </ul>
                     </div>
 
                     <div className="qc-footer-col">
                         <h4>Admin & Management</h4>
                         <ul>
-                            <li onClick={() => setCurrentView('admin')}>Restricted Admin Console</li>
-                            <li onClick={() => setCurrentView('admin')}>Inventory Stock Management</li>
-                            <li onClick={() => setCurrentView('admin')}>Apply Festive Offer Tags</li>
-                            <li onClick={() => setCurrentView('admin')}>5-Step Order Dispatch</li>
-                            <li onClick={() => setCurrentView('admin')}>Support Incident Tickets</li>
+                            <li><a href="/admin" onClick={(e) => { e.preventDefault(); setCurrentView('admin'); }}>Restricted Admin Console</a></li>
+                            <li><a href="/admin" onClick={(e) => { e.preventDefault(); setCurrentView('admin'); }}>Inventory Stock Management</a></li>
+                            <li><a href="/admin" onClick={(e) => { e.preventDefault(); setCurrentView('admin'); }}>Apply Festive Offer Tags</a></li>
+                            <li><a href="/admin" onClick={(e) => { e.preventDefault(); setCurrentView('admin'); }}>5-Step Order Dispatch</a></li>
+                            <li><a href="/admin" onClick={(e) => { e.preventDefault(); setCurrentView('admin'); }}>Support Incident Tickets</a></li>
                         </ul>
                     </div>
                 </div>

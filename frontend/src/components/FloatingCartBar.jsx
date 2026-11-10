@@ -10,9 +10,13 @@ function FloatingCartBar() {
     }
 
     return (
-        <div
+        <a
+            href="/cart"
             className="floating-cart-bar"
-            onClick={() => setCurrentView('cart')}
+            onClick={(e) => {
+                e.preventDefault();
+                setCurrentView('cart');
+            }}
             role="button"
             aria-label="View Cart"
             tabIndex={0}
@@ -39,7 +43,7 @@ function FloatingCartBar() {
                 <span>View Cart</span>
                 <ChevronRight size={15} className="floating-cart-chevron" />
             </div>
-        </div>
+        </a>
     );
 }
 

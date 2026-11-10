@@ -47,6 +47,26 @@ export default function OrderTrackingView() {
 
     const currentStepIndex = getStatusIndex(currentStatus);
 
+    // Deep-link hydration & URL query sync
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const queryId = params.get('id') || params.get('trackingId');
+        if (queryId && (!activeTrackingOrder || (activeTrackingOrder._id !== queryId && activeTrackingOrder.trackingId !== queryId))) {
+            trackOrderByQuery(queryId);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (order && (order.trackingId || order._id)) {
+            const trackId = order.trackingId || order._id;
+            const currentSearch = new URLSearchParams(window.location.search);
+            if (currentSearch.get('id') !== trackId) {
+                const newUrl = `/tracking?id=${encodeURIComponent(trackId)}`;
+                window.history.replaceState({ view: 'tracking' }, '', newUrl);
+            }
+        }
+    }, [order?.trackingId, order?._id]);
+
     // Refresh live status from backend
     async function handleRefreshStatus() {
         if (!order) return;

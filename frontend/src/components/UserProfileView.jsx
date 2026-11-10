@@ -21,6 +21,7 @@ export default function UserProfileView() {
         loadOrders,
         fetchProductStock,
         showToast,
+        currentView,
         setCurrentView,
         isAdmin,
         setIsAdmin,
@@ -53,6 +54,13 @@ export default function UserProfileView() {
     const [isAdminLoggingIn, setIsAdminLoggingIn] = useState(false);
     const [activeTab, setActiveTab] = useState('orders'); // orders, addresses, payments, wishlist, freecash, privacy, support
     const [expandedOrders, setExpandedOrders] = useState({});
+
+    // Synchronize activeTab when routed to /orders
+    useEffect(() => {
+        if (currentView === 'orders') {
+            setActiveTab('orders');
+        }
+    }, [currentView]);
 
     // Guest Order Tracking State (No login required)
     const [guestTrackQuery, setGuestTrackQuery] = useState('');

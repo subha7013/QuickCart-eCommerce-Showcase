@@ -6,10 +6,104 @@ import { FESTIVAL_THEMES, getActiveTheme } from '../utils/themeEngine.js';
 
 const AppContext = createContext();
 
+export const ROUTE_MAP = {
+    '/': 'home',
+    '/home': 'home',
+    '/categories': 'categories',
+    '/cart': 'cart',
+    '/wishlist': 'wishlist',
+    '/checkout': 'select-address',
+    '/select-address': 'select-address',
+    '/profile': 'profile',
+    '/orders': 'orders',
+    '/tracking': 'tracking',
+    '/admin': 'admin'
+};
+
+export const VIEW_TO_PATH = {
+    'home': '/',
+    'categories': '/categories',
+    'cart': '/cart',
+    'wishlist': '/wishlist',
+    'select-address': '/checkout',
+    'checkout': '/checkout',
+    'profile': '/profile',
+    'orders': '/orders',
+    'tracking': '/tracking',
+    'admin': '/admin'
+};
+
+export const VIEW_TITLES = {
+    'home': 'QuickCart | 10-Minute Superstore',
+    'categories': 'Categories & Aisles | QuickCart',
+    'cart': 'Shopping Cart | QuickCart',
+    'wishlist': 'My Wishlist | QuickCart',
+    'select-address': 'Checkout & Delivery | QuickCart',
+    'checkout': 'Checkout & Delivery | QuickCart',
+    'profile': 'My Account | QuickCart',
+    'orders': 'My Orders | QuickCart',
+    'tracking': 'Live Order Tracking | QuickCart',
+    'admin': 'Admin Console | QuickCart'
+};
+
+export function normalizePath(p) {
+    if (!p) return '/';
+    const clean = p.toLowerCase().split('?')[0].split('#')[0].replace(/\/+$/, '');
+    return clean || '/';
+}
+
+export function getInitialRouteState() {
+    if (typeof window === 'undefined') {
+        return { view: 'home', category: null, subcategory: null, trackId: null, path: '/' };
+    }
+    const path = normalizePath(window.location.pathname);
+    const params = new URLSearchParams(window.location.search);
+    const category = params.get('cat') || null;
+    const subcategory = params.get('sub') || null;
+    const trackId = params.get('id') || params.get('trackingId') || null;
+
+    const view = ROUTE_MAP[path] || 'home';
+    return { view, category, subcategory, trackId, path };
+}
+
 export function AppProvider({ children }) {
-    const [currentView, setCurrentView] = useState('home');
-    const [selectedCategoryName, setSelectedCategoryName] = useState(null);
-    const [selectedSubcategory, setSelectedSubcategory] = useState(null);
+    const initialRoute = useMemo(() => getInitialRouteState(), []);
+    const [currentView, _setCurrentView] = useState(initialRoute.view);
+    const [selectedCategoryName, setSelectedCategoryName] = useState(initialRoute.category);
+    const [selectedSubcategory, setSelectedSubcategory] = useState(initialRoute.subcategory);
+
+    function setCurrentView(viewOrUpdater, options = {}) {
+        _setCurrentView(prevView => {
+            const nextView = typeof viewOrUpdater === 'function' ? viewOrUpdater(prevView) : viewOrUpdater;
+            const targetPath = VIEW_TO_PATH[nextView] || '/';
+            let queryString = '';
+
+            if (options.query) {
+                queryString = options.query.startsWith('?') ? options.query : `?${options.query}`;
+            }
+
+            const targetUrl = `${targetPath}${queryString}`;
+            const currentUrl = `${window.location.pathname}${window.location.search}`;
+
+            if (currentUrl !== targetUrl || options.force) {
+                if (options.replace) {
+                    window.history.replaceState({ view: nextView }, '', targetUrl);
+                } else {
+                    window.history.pushState({ view: nextView }, '', targetUrl);
+                }
+            }
+
+            if (!options.noScroll) {
+                try {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } catch (e) {
+                    window.scrollTo(0, 0);
+                }
+            }
+
+            return nextView;
+        });
+    }
     const [currentUser, setCurrentUser] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [cart, setCart] = useState([]);
@@ -601,6 +695,81 @@ export function AppProvider({ children }) {
         fetchMe();
         fetchProductStock();
         fetchTheme();
+    }, []);
+
+    // Listen for browser Back & Forward navigation (popstate)
+    useEffect(() => {
+        function handlePopState(e) {
+            const path = normalizePath(window.location.pathname);
+            const targetView = ROUTE_MAP[path] || (e.state && e.state.view) || 'home';
+            _setCurrentView(targetView);
+
+            // Re-hydrate any query params from URL
+            const params = new URLSearchParams(window.location.search);
+            const cat = params.get('cat');
+            const sub = params.get('sub');
+            if (cat !== null) setSelectedCategoryName(cat);
+            if (sub !== null) setSelectedSubcategory(sub);
+            const trackId = params.get('id') || params.get('trackingId');
+            if (trackId) {
+                trackOrderByQuery(trackId);
+            }
+        }
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
+
+    // Canonicalize initial path and auto-track order if URL has ?id=
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const path = normalizePath(window.location.pathname);
+        if (!ROUTE_MAP[path]) {
+            window.history.replaceState({ view: 'home' }, '', '/');
+        } else if (path === '/home' || path === '/select-address') {
+            const canonical = VIEW_TO_PATH[ROUTE_MAP[path]] || '/';
+            const search = window.location.search || '';
+            window.history.replaceState({ view: ROUTE_MAP[path] }, '', `${canonical}${search}`);
+        }
+
+        if (initialRoute.trackId) {
+            trackOrderByQuery(initialRoute.trackId);
+        }
+    }, []);
+
+    // Dynamic document title update per route
+    useEffect(() => {
+        const title = VIEW_TITLES[currentView] || 'QuickCart | 10-Minute Superstore';
+        document.title = title;
+    }, [currentView]);
+
+    // Global interceptor for relative internal links (<a href="/...">)
+    useEffect(() => {
+        function handleGlobalLinkClicks(e) {
+            if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+                return;
+            }
+            const anchor = e.target.closest('a');
+            if (!anchor) return;
+            const href = anchor.getAttribute('href');
+            if (!href) return;
+            if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('#')) {
+                return;
+            }
+            if (anchor.target && anchor.target !== '_self') {
+                return;
+            }
+            if (href.startsWith('/')) {
+                e.preventDefault();
+                const [pathPart, queryPart] = href.split('?');
+                const clean = normalizePath(pathPart);
+                const targetView = ROUTE_MAP[clean] || 'home';
+                setCurrentView(targetView, { query: queryPart });
+            }
+        }
+
+        document.addEventListener('click', handleGlobalLinkClicks);
+        return () => document.removeEventListener('click', handleGlobalLinkClicks);
     }, []);
 
     useEffect(() => {

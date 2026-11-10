@@ -34,7 +34,7 @@ export default function TaxInvoiceModal() {
                             <h1 className="invoice-brand-title">🛒 QuickCart</h1>
                             <p className="invoice-brand-sub">Express Supermarket & Daily Essentials</p>
                             <p className="invoice-legal-info">GSTIN: 19AAACQ1234F1Z5 | FSSAI Lic: 12823019000456</p>
-                            <p className="invoice-legal-info">Support: support@quickcart.com | Web: www.quickcart.com</p>
+                            <p className="invoice-legal-info">Support: support@quickcart.com | Web: https://orderquickcart.netlify.app</p>
                         </div>
                         <div className="invoice-type-badge">
                             <h2>TAX INVOICE</h2>
@@ -165,7 +165,7 @@ export default function TaxInvoiceModal() {
                                         <div className="payment-status-badge">
                                             <span>Payment Status:</span>
                                             <strong className={invoiceOrder.paymentMethod === 'cod' ? 'status-cod' : 'status-paid'}>
-                                                {invoiceOrder.paymentMethod === 'cod' ? 'PAY ON DELIVERY' : 'PAID IN FULL'}
+                                                {invoiceOrder.paymentMethod === 'cod' ? 'PAY ON DELIVERY' : 'PAID'}
                                             </strong>
                                         </div>
                                     </>

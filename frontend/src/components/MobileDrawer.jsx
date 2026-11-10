@@ -34,24 +34,34 @@ export default function MobileDrawer() {
                 <div className="drawer-content">
                     <div className="drawer-user-section">
                         {currentUser ? (
-                            <div className="user-info-card" onClick={() => { setCurrentView('profile'); onClose(); }}>
+                            <a
+                                href="/profile"
+                                className="user-info-card"
+                                onClick={(e) => { e.preventDefault(); setCurrentView('profile'); onClose(); }}
+                            >
                                 <div className="user-avatar-sm">{currentUser.email.charAt(0).toUpperCase()}</div>
                                 <div>
                                     <p className="user-name">{currentUser.email.split('@')[0]}</p>
                                     <p className="user-email">{currentUser.email}</p>
                                 </div>
-                            </div>
+                            </a>
                         ) : (
-                            <button className="drawer-auth-btn" onClick={() => { setCurrentView('profile'); onClose(); }}>
+                            <a
+                                href="/profile"
+                                className="drawer-auth-btn"
+                                onClick={(e) => { e.preventDefault(); setCurrentView('profile'); onClose(); }}
+                            >
                                 <User size={16} /> Login / Sign Up
-                            </button>
+                            </a>
                         )}
                     </div>
 
                     <nav className="drawer-nav">
-                        <button
+                        <a
+                            href="/"
                             className={`drawer-link ${currentView === 'home' && !selectedCategoryName ? 'active' : ''}`}
-                            onClick={() => {
+                            onClick={(e) => {
+                                e.preventDefault();
                                 setSelectedCategoryName(null);
                                 setSelectedSubcategory(null);
                                 setCurrentView('home');
@@ -59,16 +69,18 @@ export default function MobileDrawer() {
                             }}
                         >
                             <Home size={18} /> Home
-                        </button>
-                        <button
+                        </a>
+                        <a
+                            href="/categories"
                             className={`drawer-link ${currentView === 'categories' ? 'active' : ''}`}
-                            onClick={() => {
+                            onClick={(e) => {
+                                e.preventDefault();
                                 setCurrentView('categories');
                                 onClose();
                             }}
                         >
                             <Grid size={18} /> All Categories
-                        </button>
+                        </a>
 
                         <div className="drawer-category-group">
                             <span className="group-title">Browse Categories</span>
@@ -91,36 +103,40 @@ export default function MobileDrawer() {
                         <div className="drawer-divider" />
 
                         {isAdmin && (
-                            <button
+                            <a
+                                href="/admin"
                                 className={`drawer-link ${currentView === 'admin' ? 'active' : ''}`}
-                                onClick={() => { setCurrentView('admin'); onClose(); }}
+                                onClick={(e) => { e.preventDefault(); setCurrentView('admin'); onClose(); }}
                             >
                                 <Shield size={18} /> Admin Dashboard
-                            </button>
+                            </a>
                         )}
 
                         {currentUser && (
-                            <button
-                                className={`drawer-link ${currentView === 'profile' ? 'active' : ''}`}
-                                onClick={() => { setCurrentView('profile'); onClose(); }}
+                            <a
+                                href="/orders"
+                                className={`drawer-link ${currentView === 'orders' ? 'active' : ''}`}
+                                onClick={(e) => { e.preventDefault(); setCurrentView('orders'); onClose(); }}
                             >
                                 <ShoppingBag size={18} /> My Orders
-                            </button>
+                            </a>
                         )}
 
-                        <button
+                        <a
+                            href="/tracking"
                             className={`drawer-link ${currentView === 'tracking' ? 'active' : ''}`}
-                            onClick={() => { setCurrentView('tracking'); onClose(); }}
+                            onClick={(e) => { e.preventDefault(); setCurrentView('tracking'); onClose(); }}
                         >
                             <Truck size={18} /> Track Any Order
-                        </button>
+                        </a>
 
-                        <button
+                        <a
+                            href="/wishlist"
                             className={`drawer-link ${currentView === 'wishlist' ? 'active' : ''}`}
-                            onClick={() => { setCurrentView('wishlist'); onClose(); }}
+                            onClick={(e) => { e.preventDefault(); setCurrentView('wishlist'); onClose(); }}
                         >
                             <Heart size={18} /> Wishlist ({wishlistCount})
-                        </button>
+                        </a>
 
                     </nav>
                 </div>
