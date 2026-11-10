@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     CheckCircle2, Truck, Package, Clock, MapPin,
-    Printer, ArrowLeft, AlertCircle, XCircle,
+    Printer, Download, ArrowLeft, AlertCircle, XCircle,
     RotateCw, Search, ShieldCheck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
@@ -344,9 +344,10 @@ export default function OrderTrackingView() {
                     <button
                         className="qc-order-action-btn secondary small"
                         onClick={(e) => generateInvoiceForOrder(order, e)}
+                        title="Download Tax Invoice as PDF"
                     >
-                        <Printer size={13} />
-                        <span>Print Invoice</span>
+                        <Download size={13} />
+                        <span>Download Invoice</span>
                     </button>
                 </div>
 

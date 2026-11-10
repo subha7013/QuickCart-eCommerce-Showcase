@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { api, BASE_URL } from '../utils/api.js';
-import { printInvoiceDocument } from '../utils/helpers.js';
+import { downloadInvoicePdf, printInvoiceDocument } from '../utils/helpers.js';
 import { categories } from '../data/categories.js';
 import { FESTIVAL_THEMES, getActiveTheme } from '../utils/themeEngine.js';
 
@@ -304,10 +304,9 @@ export function AppProvider({ children }) {
 
     function generateInvoiceForOrder(order, e) {
         if (e && e.stopPropagation) e.stopPropagation();
-        setInvoiceOrder(order);
-        setTimeout(() => {
-            printInvoiceDocument(order, currentUser, profilePhone);
-        }, 150);
+        if (!order) return;
+        downloadInvoicePdf(order, currentUser, profilePhone);
+        showToast("📥 Tax Invoice PDF downloaded successfully!");
     }
 
     async function cancelUserOrder(order, e) {

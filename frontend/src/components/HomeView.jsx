@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Sparkles, Zap, ShieldCheck, RefreshCw, Clock, ArrowRight, ArrowLeft,
     ChevronLeft, ChevronRight, Flame, Percent, Tag, CheckCircle2,
-    Truck, Search, AlertCircle, XCircle, Printer, Grid
+    Truck, Search, AlertCircle, XCircle, Printer, Download, Grid
 } from 'lucide-react';
 import ProductCard from './ProductCard.jsx';
 import { useApp } from '../context/AppContext.jsx';
@@ -829,8 +829,9 @@ export default function HomeView() {
                             <button
                                 className="qc-order-action-btn secondary"
                                 onClick={(e) => generateInvoiceForOrder(guestTrackResult, e)}
+                                title="Download Tax Invoice as PDF"
                             >
-                                <Printer size={14} /> <span>Download Invoice</span>
+                                <Download size={14} /> <span>Download Invoice (PDF)</span>
                             </button>
                         </div>
                     </div>
