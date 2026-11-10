@@ -6,8 +6,7 @@
 [![Express.js](https://img.shields.io/badge/Express.js-4.19-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![Razorpay](https://img.shields.io/badge/Razorpay-Payment_Gateway-02042B?style=for-the-badge&logo=razorpay&logoColor=3395FF)](https://razorpay.com/)
-[![Netlify](https://img.shields.io/badge/Deploy-Netlify-00C7B7?style=for-the-badge&logo=netlify&logoColor=white)](https://www.netlify.com/)
-[![License](https://img.shields.io/badge/License-ISC-blue?style=for-the-badge)](LICENSE)
+[![Netlify](https://img.shields.io/badge/Deploy-Netlify-00C7B7?style=for-the-badge&logo=netlify&logoColor=white)](https://orderquickcart.netlify.com/)
 
 > A modern, full-stack, hyper-local quick-commerce web application inspired by **Blinkit**, **Zepto**, and **Swiggy Instamart**. Features 10-minute order flows, Razorpay checkout, live public order tracking, dynamic store theme engine, promotional wallet cash airdrops, coupons with MOV validation, printable GST tax invoices, and an enterprise-grade admin management suite.
 
