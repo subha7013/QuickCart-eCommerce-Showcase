@@ -92,36 +92,36 @@ export function safeNum(val) {
     return isNaN(n) ? 0 : n;
 }
 
-export function printInvoiceDocument(order, currentUser = null, profilePhone = '') {
+export function downloadInvoicePdf(order, currentUser = null, profilePhone = '') {
     if (!order) return;
+
+    function cleanText(str) {
+        return String(str || '')
+            .replace(/\u20B9/g, 'Rs. ')
+            .replace(/[^\x20-\x7E]/g, ' ')
+            .replace(/\\/g, '\\\\')
+            .replace(/\(/g, '\\(')
+            .replace(/\)/g, '\\)');
+    }
+
     const invoiceNo = 'INV-' + String(order._id || order.id || order.orderRef || '001').slice(-8).toUpperCase();
     const orderRef = String(order.orderRef || order._id || 'N/A');
-    
+
     // Dates
     const rawDate = order.createdAt || order.date;
     let orderDateStr = 'N/A';
     if (rawDate) {
         const d = new Date(rawDate);
-        orderDateStr = isNaN(d.getTime()) ? String(rawDate) : d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+        orderDateStr = isNaN(d.getTime()) ? String(rawDate) : (d.toLocaleDateString('en-IN') + ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
     } else {
-        orderDateStr = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+        orderDateStr = new Date().toLocaleDateString('en-IN');
     }
 
-    const statusNorm = (order.status || 'placed').toLowerCase();
-    let deliveryDateStr = null;
-    if (statusNorm === 'delivered') {
-        const delRaw = order.deliveredAt || order.updatedAt || rawDate;
-        if (delRaw) {
-            const d = new Date(delRaw);
-            deliveryDateStr = isNaN(d.getTime()) ? String(delRaw) : d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
-        } else {
-            deliveryDateStr = 'Delivered';
-        }
-    }
-
-    const customerName = order.name || (currentUser?.email ? currentUser.email.split('@')[0] : 'Valued Customer');
-    const customerPhone = order.phone || profilePhone || 'N/A';
-    const deliveryAddress = (order.address || 'N/A') + (order.city ? `, ${order.city}` : '') + (order.zip ? ` - ${order.zip}` : '');
+    const customerName = cleanText(order.name || (currentUser?.email ? currentUser.email.split('@')[0] : 'Valued Customer'));
+    const customerPhone = cleanText(order.phone || profilePhone || 'N/A');
+    const fullAddress = cleanText((order.address || 'N/A') + (order.city ? ', ' + order.city : '') + (order.zip ? ' - ' + order.zip : ''));
+    const isCod = order.paymentMethod === 'cod';
+    const paymentMethod = cleanText(isCod ? 'Cash on Delivery (COD)' : ('Online / ' + (order.paymentMethod ? String(order.paymentMethod).toUpperCase() : 'Prepaid')));
 
     const items = order.items || [];
     const subtotal = items.reduce((acc, item) => acc + ((Number(item.qty || item.quantity) || 1) * (Number(item.price) || 0)), 0);
@@ -129,216 +129,174 @@ export function printInvoiceDocument(order, currentUser = null, profilePhone = '
     const discount = Number(order.couponDiscount || order.discountAmount) || 0;
     const grandTotal = Number(order.total || order.totalAmount) || (subtotal + deliveryFee - discount);
 
-    const isCod = order.paymentMethod === 'cod';
+    let stream = '';
 
-    const fallbackProductLogo = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 24 24' fill='%23eff6ff' stroke='%232563eb' stroke-width='1.5'%3E%3Cpath d='m7.5 4.27 9 5.15'/%3E%3Cpath d='M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z'/%3E%3Cpath d='m3.3 7 8.7 5 8.7-5'/%3E%3Cpath d='M12 22V12'/%3E%3C/svg%3E";
+    // Top Header Accent Stripe (QuickCart Green)
+    stream += '0.047 0.514 0.122 rg 0 831.89 595.28 10 re f\n';
 
-    const itemsHtml = items.map((item, idx) => {
+    // Company Branding (Left)
+    stream += 'BT /F2 22 Tf 0.047 0.514 0.122 rg 40 792 Td (QuickCart) Tj ET\n';
+    stream += 'BT /F1 9 Tf 0.28 0.33 0.39 rg 40 778 Td (Express 10-Minute Supermarket & Daily Essentials) Tj ET\n';
+    stream += 'BT /F1 8 Tf 0.42 0.48 0.55 rg 40 765 Td (GSTIN: 19AAACQ1234F1Z5 | FSSAI Lic: 12823019000456) Tj ET\n';
+    stream += 'BT /F1 8 Tf 0.42 0.48 0.55 rg 40 753 Td (Support: support@quickcart.com | Web: www.quickcart.com) Tj ET\n';
+
+    // Tax Invoice Badge (Right)
+    stream += 'BT /F2 18 Tf 0.06 0.09 0.16 rg 420 792 Td (TAX INVOICE) Tj ET\n';
+    stream += '0.94 0.96 0.98 rg 420 772 135 14 re f\n';
+    stream += '0.8 0.85 0.9 RG 0.5 w 420 772 135 14 re S\n';
+    stream += 'BT /F2 7.5 Tf 0.28 0.33 0.39 rg 426 776 Td (ORIGINAL FOR RECIPIENT) Tj ET\n';
+
+    // Top separator
+    stream += '0.8 0.85 0.9 RG 1 w 40 740 m 555 740 l S\n';
+
+    // Metadata Card
+    stream += '0.97 0.98 0.99 rg 40 645 515 85 re f\n';
+    stream += '0.82 0.86 0.9 RG 0.8 w 40 645 515 85 re S\n';
+    stream += '0.85 0.89 0.93 RG 0.8 w 295 645 m 295 730 l S\n';
+
+    // Order Info (Left)
+    stream += 'BT /F2 9.5 Tf 0.06 0.09 0.16 rg 52 715 Td (ORDER DETAILS) Tj ET\n';
+    stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 52 700 Td (Invoice No: ' + cleanText(invoiceNo) + ') Tj ET\n';
+    stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 52 687 Td (Order Ref: ' + cleanText(orderRef) + ') Tj ET\n';
+    stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 52 674 Td (Date: ' + cleanText(orderDateStr) + ') Tj ET\n';
+    const statusLabel = cleanText((order.status || 'placed').toUpperCase());
+    stream += 'BT /F2 8.5 Tf 0.047 0.514 0.122 rg 52 660 Td (Status: ' + statusLabel + ') Tj ET\n';
+
+    // Customer Info (Right)
+    stream += 'BT /F2 9.5 Tf 0.06 0.09 0.16 rg 307 715 Td (BILLED & DELIVERED TO) Tj ET\n';
+    stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 307 700 Td (Customer: ' + customerName + ') Tj ET\n';
+    stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 307 687 Td (Phone: ' + customerPhone + ') Tj ET\n';
+    const addrLine1 = fullAddress.slice(0, 42);
+    const addrLine2 = fullAddress.length > 42 ? fullAddress.slice(42, 84) : '';
+    stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 307 674 Td (Address: ' + addrLine1 + ') Tj ET\n';
+    if (addrLine2) {
+        stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 307 662 Td (' + addrLine2 + ') Tj ET\n';
+    } else {
+        stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 307 662 Td (Payment: ' + paymentMethod + ') Tj ET\n';
+    }
+
+    // Table Header
+    stream += '0.06 0.09 0.16 rg 40 615 515 20 re f\n';
+    stream += 'BT /F2 8.5 Tf 1 1 1 rg 50 621 Td (#) Tj ET\n';
+    stream += 'BT /F2 8.5 Tf 1 1 1 rg 85 621 Td (PRODUCT DESCRIPTION) Tj ET\n';
+    stream += 'BT /F2 8.5 Tf 1 1 1 rg 350 621 Td (QTY) Tj ET\n';
+    stream += 'BT /F2 8.5 Tf 1 1 1 rg 410 621 Td (UNIT PRICE) Tj ET\n';
+    stream += 'BT /F2 8.5 Tf 1 1 1 rg 495 621 Td (AMOUNT) Tj ET\n';
+
+    // Table Rows
+    let curY = 595;
+    const rowHeight = 22;
+    items.slice(0, 15).forEach((item, idx) => {
         const qty = Number(item.qty || item.quantity) || 1;
         const price = Number(item.price) || 0;
         const total = qty * price;
-        const formattedImg = formatProductImage(item.image);
-        const imgUrl = (formattedImg.startsWith('http') || formattedImg.startsWith('data:'))
-            ? formattedImg
-            : `${window.location.origin}${formattedImg}`;
-
-        return `
-            <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${idx + 1}</td>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <img src="${imgUrl}" alt="${item.name || 'Product'}" onerror="this.onerror=null;this.src='${fallbackProductLogo}';" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; display: block;" />
-                        <div>
-                            <strong style="color: #0f172a; display: block; font-size: 0.9rem;">${item.name || 'Product'}</strong>
-                            ${item.subcategory ? `<span style="font-size: 0.75rem; color: #64748b;">Category: ${item.subcategory}</span>` : ''}
-                        </div>
-                    </div>
-                </td>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: 600;">${qty}</td>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right;">₹${price.toFixed(2)}</td>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700;">₹${total.toFixed(2)}</td>
-            </tr>
-        `;
-    }).join('');
-
-    const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Tax Invoice - ${invoiceNo}</title>
-            <meta charset="utf-8" />
-            <style>
-                body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; margin: 0; padding: 24px; background: #ffffff; }
-                .invoice-card { max-width: 800px; margin: 0 auto; border: 1px solid #cbd5e1; border-radius: 12px; padding: 28px; background: #ffffff; }
-                .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-                .brand-title { font-size: 26px; font-weight: 800; color: #16a34a; margin: 0 0 4px 0; }
-                .brand-sub { font-size: 14px; font-weight: 600; color: #475569; margin: 0 0 6px 0; }
-                .legal-info { font-size: 12px; color: #64748b; margin: 2px 0; }
-                .invoice-badge { text-align: right; }
-                .invoice-badge h2 { font-size: 22px; font-weight: 900; margin: 0; color: #0f172a; }
-                .cash-label { display: inline-block; background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; border: 1px solid #cbd5e1; margin-top: 4px; }
-                .divider { border: none; border-top: 2px dashed #cbd5e1; margin: 18px 0; }
-                .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 20px; }
-                .meta-col h4 { margin: 0 0 8px 0; font-size: 13px; text-transform: uppercase; color: #0f172a; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
-                .meta-col p { margin: 4px 0; font-size: 13px; color: #334155; line-height: 1.4; }
-                .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                .table th { background: #0f172a; color: #ffffff; font-size: 12px; font-weight: 700; text-transform: uppercase; padding: 10px; text-align: left; }
-                .summary-container { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; margin-bottom: 20px; }
-                .notes { background: #f1f5f9; padding: 14px; border-radius: 8px; border-left: 4px solid #3b82f6; font-size: 12px; color: #475569; }
-                .notes h5 { margin: 0 0 6px 0; font-size: 13px; color: #1e293b; }
-                .notes ul { margin: 0; padding-left: 16px; }
-                .totals { background: #f8fafc; border: 1px solid #cbd5e1; padding: 16px; border-radius: 10px; }
-                .row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; color: #334155; }
-                .row.grand { font-size: 16px; font-weight: 800; color: #0f172a; margin-top: 8px; }
-                .row.discount { color: #16a34a; font-weight: 600; }
-                .status-paid { background: #dcfce7; color: #15803d; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 12px; }
-                .status-cod { background: #fef3c7; color: #b45309; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 12px; }
-                .footer-banner { text-align: center; border-top: 2px solid #0f172a; padding-top: 14px; margin-top: 14px; }
-                .footer-banner p { font-size: 15px; font-weight: 700; color: #16a34a; margin: 0; }
-            </style>
-        </head>
-        <body>
-            <div class="invoice-card">
-                <div class="header">
-                    <div>
-                        <h1 class="brand-title">🛒 QuickCart</h1>
-                        <p class="brand-sub">Express Supermarket & Daily Essentials</p>
-                        <p class="legal-info">GSTIN: 19AAACQ1234F1Z5 | FSSAI Lic: 12823019000456</p>
-                        <p class="legal-info">Support: support@quickcart.com | Web: www.quickcart.com</p>
-                    </div>
-                    <div class="invoice-badge">
-                        <h2>TAX INVOICE</h2>
-                        <span class="cash-label">ORIGINAL FOR RECIPIENT</span>
-                    </div>
-                </div>
-
-                <hr class="divider" />
-
-                <div class="meta-grid">
-                    <div class="meta-col">
-                        <h4>Order Details</h4>
-                        <p><strong>Invoice No:</strong> ${invoiceNo}</p>
-                        <p><strong>Order Ref:</strong> ${orderRef}</p>
-                        <p><strong>Order Date:</strong> ${orderDateStr}</p>
-                        ${deliveryDateStr ? `<p><strong>Delivery Date:</strong> <span style="color: #16a34a; font-weight: 700;">${deliveryDateStr}</span></p>` : ''}
-                    </div>
-                    <div class="meta-col">
-                        <h4>Billed & Delivered To</h4>
-                        <p><strong>Customer Name:</strong> ${customerName}</p>
-                        <p><strong>Phone:</strong> ${customerPhone}</p>
-                        <p><strong>Delivery Address:</strong> ${deliveryAddress}</p>
-                        <p><strong>Payment Method:</strong> ${isCod ? 'Cash on Delivery (COD)' : `Online / ${order.paymentMethod ? String(order.paymentMethod).toUpperCase() : 'Prepaid'}`}</p>
-                    </div>
-                </div>
-
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th style="width: 40px; text-align: center;">#</th>
-                            <th>Product Description</th>
-                            <th style="text-align: center; width: 60px;">Qty</th>
-                            <th style="text-align: right; width: 100px;">Price</th>
-                            <th style="text-align: right; width: 100px;">Total (₹)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${itemsHtml}
-                    </tbody>
-                </table>
-
-                <div class="summary-container">
-                    <div class="notes">
-                        <h5>Terms & Conditions:</h5>
-                        <ul>
-                            <li>This is a computer-generated tax invoice and requires no physical signature.</li>
-                            <li>Includes applicable GST and local delivery charges.</li>
-                            <li>For support or returns, reach out within 24 hours of delivery.</li>
-                        </ul>
-                    </div>
-                    <div class="totals">
-                        <div class="row">
-                            <span>Items Subtotal:</span>
-                            <span>₹${subtotal.toFixed(2)}</span>
-                        </div>
-                        <div class="row">
-                            <span>Delivery Charge:</span>
-                            <span>${deliveryFee === 0 ? '<strong style="color: #16a34a;">FREE</strong>' : `₹${deliveryFee.toFixed(2)}`}</span>
-                        </div>
-                        ${discount > 0 ? `
-                            <div class="row discount">
-                                <span>Coupon Discount (${order.couponCode || 'APPLIED'}):</span>
-                                <span>-₹${discount.toFixed(2)}</span>
-                            </div>
-                        ` : ''}
-                        <hr style="border: none; border-top: 1px solid #cbd5e1; margin: 8px 0;" />
-                        <div class="row grand">
-                            <span>Grand Total:</span>
-                            <span>₹${grandTotal.toFixed(2)}</span>
-                        </div>
-                        <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 12px; color: #64748b;">Payment Status:</span>
-                            <span class="${isCod ? 'status-cod' : 'status-paid'}">${isCod ? 'PAY ON DELIVERY' : 'PAID IN FULL'}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="footer-banner">
-                    <p>Thank you for shopping with QuickCart! 🙏</p>
-                </div>
-            </div>
-            <script>
-                var hasPrinted = false;
-                function triggerSafePrint() {
-                    if (hasPrinted) return;
-                    hasPrinted = true;
-                    setTimeout(function() {
-                        window.focus();
-                        window.print();
-                    }, 250);
-                }
-                window.addEventListener('load', function() {
-                    var imgs = Array.from(document.images);
-                    if (!imgs || imgs.length === 0) {
-                        triggerSafePrint();
-                        return;
-                    }
-                    Promise.all(imgs.map(function(img) {
-                        if (img.complete) return Promise.resolve();
-                        return new Promise(function(resolve) {
-                            img.onload = resolve;
-                            img.onerror = resolve;
-                        });
-                    })).then(triggerSafePrint);
-                });
-            </script>
-        </body>
-        </html>
-    `;
-
-    // Render inside a hidden iframe to prevent the main window from turning white
-    let iframe = document.getElementById('qc-invoice-print-frame');
-    if (iframe) {
-        iframe.remove();
-    }
-    iframe = document.createElement('iframe');
-    iframe.id = 'qc-invoice-print-frame';
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.style.visibility = 'hidden';
-    document.body.appendChild(iframe);
-
-    try {
-        const doc = iframe.contentWindow?.document || iframe.contentDocument;
-        if (doc) {
-            doc.open();
-            doc.write(htmlContent);
-            doc.close();
+        const name = cleanText(item.name || 'Product').slice(0, 42);
+        if (idx % 2 === 1) {
+            stream += '0.97 0.98 0.99 rg 40 ' + (curY - 5) + ' 515 ' + rowHeight + ' re f\n';
         }
-    } catch (e) {
-        console.error('Failed to populate print iframe:', e);
+        stream += '0.9 0.92 0.95 RG 0.5 w 40 ' + (curY - 5) + ' m 555 ' + (curY - 5) + ' l S\n';
+        stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 50 ' + curY + ' Td (' + (idx + 1) + ') Tj ET\n';
+        stream += 'BT /F2 8.5 Tf 0.1 0.15 0.2 rg 85 ' + curY + ' Td (' + name + ') Tj ET\n';
+        stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 355 ' + curY + ' Td (' + qty + ') Tj ET\n';
+        stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 410 ' + curY + ' Td (Rs. ' + price.toFixed(2) + ') Tj ET\n';
+        stream += 'BT /F2 8.5 Tf 0.1 0.15 0.2 rg 495 ' + curY + ' Td (Rs. ' + total.toFixed(2) + ') Tj ET\n';
+        curY -= rowHeight;
+    });
+
+    stream += '0.8 0.85 0.9 RG 1 w 40 ' + (curY - 5) + ' m 555 ' + (curY - 5) + ' l S\n';
+
+    // Summary Box
+    const summaryTop = curY - 20;
+    stream += '0.96 0.97 0.98 rg 40 ' + (summaryTop - 70) + ' 260 70 re f\n';
+    stream += '0.23 0.51 0.96 RG 3 w 40 ' + (summaryTop - 70) + ' m 40 ' + summaryTop + ' l S\n';
+    stream += 'BT /F2 8.5 Tf 0.1 0.15 0.2 rg 50 ' + (summaryTop - 15) + ' Td (Terms & Conditions:) Tj ET\n';
+    stream += 'BT /F1 7.5 Tf 0.3 0.35 0.4 rg 50 ' + (summaryTop - 30) + ' Td (* Computer-generated tax invoice. No physical signature needed.) Tj ET\n';
+    stream += 'BT /F1 7.5 Tf 0.3 0.35 0.4 rg 50 ' + (summaryTop - 44) + ' Td (* Includes applicable GST (CGST 2.5% + SGST 2.5%).) Tj ET\n';
+    stream += 'BT /F1 7.5 Tf 0.3 0.35 0.4 rg 50 ' + (summaryTop - 58) + ' Td (* For returns or support, contact within 24 hours of delivery.) Tj ET\n';
+
+    stream += '0.97 0.98 0.99 rg 315 ' + (summaryTop - 90) + ' 240 90 re f\n';
+    stream += '0.82 0.86 0.9 RG 0.8 w 315 ' + (summaryTop - 90) + ' 240 90 re S\n';
+
+    let totY = summaryTop - 16;
+    stream += 'BT /F1 8.5 Tf 0.3 0.35 0.4 rg 325 ' + totY + ' Td (Items Subtotal:) Tj ET\n';
+    stream += 'BT /F2 8.5 Tf 0.1 0.15 0.2 rg 475 ' + totY + ' Td (Rs. ' + subtotal.toFixed(2) + ') Tj ET\n';
+
+    totY -= 15;
+    stream += 'BT /F1 8.5 Tf 0.3 0.35 0.4 rg 325 ' + totY + ' Td (Delivery Fee:) Tj ET\n';
+    const delivText = deliveryFee === 0 ? 'FREE' : ('Rs. ' + deliveryFee.toFixed(2));
+    stream += 'BT /F2 8.5 Tf 0.047 0.514 0.122 rg 475 ' + totY + ' Td (' + delivText + ') Tj ET\n';
+
+    if (discount > 0) {
+        totY -= 15;
+        stream += 'BT /F1 8.5 Tf 0.047 0.514 0.122 rg 325 ' + totY + ' Td (Coupon Discount:) Tj ET\n';
+        stream += 'BT /F2 8.5 Tf 0.047 0.514 0.122 rg 475 ' + totY + ' Td (-Rs. ' + discount.toFixed(2) + ') Tj ET\n';
     }
+
+    totY -= 10;
+    stream += '0.8 0.85 0.9 RG 0.8 w 325 ' + totY + ' m 545 ' + totY + ' l S\n';
+
+    totY -= 14;
+    stream += 'BT /F2 11 Tf 0.06 0.09 0.16 rg 325 ' + totY + ' Td (Grand Total:) Tj ET\n';
+    stream += 'BT /F2 11 Tf 0.047 0.514 0.122 rg 465 ' + totY + ' Td (Rs. ' + grandTotal.toFixed(2) + ') Tj ET\n';
+
+    totY -= 14;
+    const payStatus = cleanText(isCod ? 'PAY ON DELIVERY' : 'PAID IN FULL');
+    stream += 'BT /F2 7.5 Tf 0.3 0.35 0.4 rg 325 ' + totY + ' Td (Payment Status: ' + payStatus + ') Tj ET\n';
+
+    // Footer
+    stream += '0.8 0.85 0.9 RG 1 w 40 50 m 555 50 l S\n';
+    stream += 'BT /F2 9.5 Tf 0.047 0.514 0.122 rg 180 34 Td (Thank you for shopping with QuickCart! 10-Min Superstore) Tj ET\n';
+
+    // Build PDF Binary String
+    const streamLen = new TextEncoder().encode(stream).length;
+    let body = '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';
+    const offsets = [];
+    const getLen = (str) => new TextEncoder().encode(str).length;
+
+    offsets.push(getLen(body));
+    body += '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n';
+
+    offsets.push(getLen(body));
+    body += '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n';
+
+    offsets.push(getLen(body));
+    body += '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>\nendobj\n';
+
+    offsets.push(getLen(body));
+    body += '4 0 obj\n<< /Length ' + streamLen + ' >>\nstream\n' + stream + 'endstream\nendobj\n';
+
+    offsets.push(getLen(body));
+    body += '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n';
+
+    offsets.push(getLen(body));
+    body += '6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\nendobj\n';
+
+    const xrefOffset = getLen(body);
+    body += 'xref\n0 7\n0000000000 65535 f \n';
+    for (let i = 0; i < offsets.length; i++) {
+        body += String(offsets[i]).padStart(10, '0') + ' 00000 n \n';
+    }
+    body += 'trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n' + xrefOffset + '\n%%EOF\n';
+
+    // Download PDF directly as Blob without opening any window or print dialog
+    try {
+        const bytes = new TextEncoder().encode(body);
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `QuickCart_Invoice_${invoiceNo}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+        }, 250);
+    } catch (err) {
+        console.error('Failed to trigger direct PDF download:', err);
+    }
+}
+
+export function printInvoiceDocument(order, currentUser = null, profilePhone = '') {
+    downloadInvoicePdf(order, currentUser, profilePhone);
 }

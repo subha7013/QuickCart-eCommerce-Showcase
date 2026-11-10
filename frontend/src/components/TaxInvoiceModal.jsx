@@ -1,6 +1,6 @@
 import React from 'react';
-import { Printer, X } from 'lucide-react';
-import { printInvoiceDocument } from '../utils/helpers.js';
+import { Download, X } from 'lucide-react';
+import { downloadInvoicePdf } from '../utils/helpers.js';
 import { useApp } from '../context/AppContext.jsx';
 
 export default function TaxInvoiceModal() {
@@ -14,12 +14,12 @@ export default function TaxInvoiceModal() {
             <div className="invoice-modal-card">
                 <div className="invoice-modal-toolbar no-print">
                     <div className="invoice-toolbar-title">
-                        <Printer size={18} />
-                        <span>Official Tax Invoice Preview</span>
+                        <Download size={18} />
+                        <span>Official Tax Invoice</span>
                     </div>
                     <div className="invoice-toolbar-actions">
-                        <button className="invoice-print-btn" onClick={() => printInvoiceDocument(invoiceOrder, currentUser, profilePhone)}>
-                            <Printer size={15} /> Print / Save PDF
+                        <button className="invoice-print-btn" onClick={() => downloadInvoicePdf(invoiceOrder, currentUser, profilePhone)}>
+                            <Download size={15} /> Download PDF
                         </button>
                         <button className="invoice-close-btn" onClick={onClose}>
                             <X size={18} />

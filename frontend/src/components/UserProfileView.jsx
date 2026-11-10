@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    User, Smartphone, BadgeCheck, RotateCw, XCircle, Lock, Printer,
+    User, Smartphone, BadgeCheck, RotateCw, XCircle, Lock, Printer, Download,
     ChevronUp, ChevronDown, Truck, Clock, CheckCircle2, Package,
     Banknote, ShoppingBag, AlertCircle, MapPin, CreditCard, Gift,
     Shield, Headphones, LogOut, Plus, Trash2, Heart, ExternalLink,
@@ -567,8 +567,9 @@ export default function UserProfileView() {
                                         <button
                                             className="qc-order-action-btn secondary"
                                             onClick={(e) => generateInvoiceForOrder(guestTrackResult, e)}
+                                            title="Download Tax Invoice as PDF"
                                         >
-                                            <Printer size={14} /> <span>Download Invoice</span>
+                                            <Download size={14} /> <span>Download Invoice (PDF)</span>
                                         </button>
                                     </div>
                                 </div>
@@ -819,8 +820,9 @@ export default function UserProfileView() {
                                                     <button
                                                         className="qc-order-action-btn secondary"
                                                         onClick={(e) => generateInvoiceForOrder(order, e)}
+                                                        title="Download Tax Invoice as PDF"
                                                     >
-                                                        <Printer size={14} />
+                                                        <Download size={14} />
                                                         <span>Download Invoice</span>
                                                     </button>
 
