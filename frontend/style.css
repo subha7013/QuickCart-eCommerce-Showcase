@@ -4974,6 +4974,29 @@ a,
     user-select: none;
     white-space: nowrap;
     border: 1px solid rgba(255, 255, 255, 0.15);
+    text-decoration: none;
+}
+
+/* SPA Semantic Anchor Reset */
+a.qc-nav-action-btn,
+a.qc-brand-logo,
+a.drawer-link,
+a.drawer-auth-btn,
+a.user-info-card,
+a.floating-cart-bar,
+.qc-footer-col ul li a,
+.qc-all-cat-link {
+    text-decoration: none;
+    color: inherit;
+}
+.qc-footer-col ul li a {
+    display: inline-block;
+    width: 100%;
+    transition: color 0.15s ease, transform 0.15s ease;
+}
+.qc-footer-col ul li a:hover {
+    color: #ffffff;
+    transform: translateX(4px);
 }
 
 @media (hover: hover) and (pointer: fine) {

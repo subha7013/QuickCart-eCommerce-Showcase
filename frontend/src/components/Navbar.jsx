@@ -73,9 +73,11 @@ export default function Navbar() {
                             <Menu size={22} />
                         </button>
 
-                        <div
+                        <a
+                            href="/"
                             className="qc-brand-logo"
-                            onClick={() => {
+                            onClick={(e) => {
+                                e.preventDefault();
                                 setSelectedCategoryName(null);
                                 setSelectedSubcategory(null);
                                 setCurrentView('home');
@@ -90,7 +92,7 @@ export default function Navbar() {
                                     ⚡ 10-Min Superstore
                                 </span>
                             </div>
-                        </div>
+                        </a>
                     </div>
 
                     {/* Center: Search Box */}
@@ -118,9 +120,11 @@ export default function Navbar() {
                     {/* Right: Navigation Actions (Home, Categories with Subcategories, Wishlist, Cart, Profile, Admin) */}
                     <div className="qc-nav-right">
                         {/* Home Button */}
-                        <button
+                        <a
+                            href="/"
                             className={`qc-nav-action-btn ${currentView === 'home' && !selectedCategoryName ? 'active' : ''}`}
-                            onClick={() => {
+                            onClick={(e) => {
+                                e.preventDefault();
                                 setSelectedCategoryName(null);
                                 setSelectedSubcategory(null);
                                 setCurrentView('home');
@@ -129,7 +133,7 @@ export default function Navbar() {
                         >
                             <Home size={18} />
                             <span>Home</span>
-                        </button>
+                        </a>
 
                         {/* Categories with Subcategories Mega-Menu */}
                         <div
@@ -152,9 +156,11 @@ export default function Navbar() {
                             {isCatDropdownOpen && (
                                 <div className="qc-mega-menu">
                                     <div className="qc-mega-menu-header">
-                                        <span
+                                        <a
+                                            href="/categories"
                                             className="qc-all-cat-link"
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                                e.preventDefault();
                                                 setSelectedCategoryName(null);
                                                 setSelectedSubcategory(null);
                                                 setCurrentView('categories');
@@ -162,7 +168,7 @@ export default function Navbar() {
                                             }}
                                         >
                                             🌟 View All Categories & Deals
-                                        </span>
+                                        </a>
                                     </div>
 
                                     <div className="qc-mega-columns-grid">
@@ -199,9 +205,13 @@ export default function Navbar() {
                         </div>
 
                         {/* Wishlist */}
-                        <button
+                        <a
+                            href="/wishlist"
                             className={`qc-nav-action-btn ${currentView === 'wishlist' ? 'active' : ''}`}
-                            onClick={() => handleNavigate('wishlist')}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleNavigate('wishlist');
+                            }}
                             title="My Wishlist"
                         >
                             <div className="qc-icon-badge-box">
@@ -209,12 +219,16 @@ export default function Navbar() {
                                 {wishlistCount > 0 && <span className="qc-badge-pill">{wishlistCount}</span>}
                             </div>
                             <span>Wishlist</span>
-                        </button>
+                        </a>
 
                         {/* Cart */}
-                        <button
+                        <a
+                            href="/cart"
                             className={`qc-nav-action-btn qc-cart-btn ${currentView === 'cart' ? 'active' : ''}`}
-                            onClick={() => handleNavigate('cart')}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleNavigate('cart');
+                            }}
                             title="Shopping Cart"
                         >
                             <div className="qc-icon-badge-box">
@@ -224,15 +238,17 @@ export default function Navbar() {
                                 )}
                             </div>
                             <span>Cart</span>
-                        </button>
-
-
+                        </a>
 
                         {/* Profile Section */}
                         {currentUser && (
-                            <button
-                                className={`qc-nav-action-btn qc-profile-btn ${currentView === 'profile' ? 'active' : ''}`}
-                                onClick={() => handleNavigate('profile')}
+                            <a
+                                href="/profile"
+                                className={`qc-nav-action-btn qc-profile-btn ${currentView === 'profile' || currentView === 'orders' ? 'active' : ''}`}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    handleNavigate('profile');
+                                }}
                                 title="My Account & Orders"
                             >
                                 <span className="qc-avatar-circle">
@@ -241,29 +257,37 @@ export default function Navbar() {
                                 <span className="qc-user-name">
                                     {currentUser.email?.split('@')[0]}
                                 </span>
-                            </button>
+                            </a>
                         )}
 
                         {!currentUser && !isAdmin && (
-                            <button
+                            <a
+                                href="/profile"
                                 className={`qc-nav-action-btn ${currentView === 'profile' ? 'active' : ''}`}
-                                onClick={() => handleNavigate('profile')}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    handleNavigate('profile');
+                                }}
                                 title="Sign In"
                             >
                                 <User size={18} />
                                 <span>Login</span>
-                            </button>
+                            </a>
                         )}
 
                         {isAdmin && (
-                            <button
+                            <a
+                                href="/admin"
                                 className={`qc-nav-action-btn qc-admin-btn ${currentView === 'admin' ? 'active' : ''}`}
-                                onClick={() => handleNavigate('admin')}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    handleNavigate('admin');
+                                }}
                                 title="Return to Admin Dashboard"
                             >
                                 <Shield size={18} />
                                 <span>Admin</span>
-                            </button>
+                            </a>
                         )}
 
                     </div>
