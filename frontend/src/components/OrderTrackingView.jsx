@@ -15,6 +15,7 @@ export default function OrderTrackingView() {
         orders,
         setCurrentView,
         generateInvoiceForOrder,
+        setInvoiceOrder,
         trackOrderByQuery,
         showToast
     } = useApp();
@@ -361,14 +362,27 @@ export default function OrderTrackingView() {
             <div className="qc-tracking-summary-card">
                 <div className="qc-summary-card-header">
                     <h4>Shipment Items ({order.items?.length || 0})</h4>
-                    <button
-                        className="qc-order-action-btn secondary small"
-                        onClick={(e) => generateInvoiceForOrder(order, e)}
-                        title="Download Tax Invoice as PDF"
-                    >
-                        <Download size={13} />
-                        <span>Download Invoice</span>
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                            className="qc-order-action-btn secondary small"
+                            onClick={(e) => {
+                                if (e && e.stopPropagation) e.stopPropagation();
+                                setInvoiceOrder(order);
+                            }}
+                            title="View Official Tax Invoice"
+                        >
+                            <Printer size={13} />
+                            <span>View Invoice</span>
+                        </button>
+                        <button
+                            className="qc-order-action-btn secondary small"
+                            onClick={(e) => generateInvoiceForOrder(order, e)}
+                            title="Download Tax Invoice as PDF"
+                        >
+                            <Download size={13} />
+                            <span>Download PDF</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="qc-summary-items-list">

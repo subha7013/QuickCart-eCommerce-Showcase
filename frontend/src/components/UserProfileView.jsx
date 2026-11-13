@@ -574,10 +574,20 @@ export default function UserProfileView() {
                                         </button>
                                         <button
                                             className="qc-order-action-btn secondary"
+                                            onClick={(e) => {
+                                                if (e && e.stopPropagation) e.stopPropagation();
+                                                setInvoiceOrder(guestTrackResult);
+                                            }}
+                                            title="View Tax Invoice"
+                                        >
+                                            <Printer size={14} /> <span>View Invoice</span>
+                                        </button>
+                                        <button
+                                            className="qc-order-action-btn secondary"
                                             onClick={(e) => generateInvoiceForOrder(guestTrackResult, e)}
                                             title="Download Tax Invoice as PDF"
                                         >
-                                            <Download size={14} /> <span>Download Invoice (PDF)</span>
+                                            <Download size={14} /> <span>Download PDF</span>
                                         </button>
                                     </div>
                                 </div>
@@ -827,11 +837,23 @@ export default function UserProfileView() {
 
                                                     <button
                                                         className="qc-order-action-btn secondary"
+                                                        onClick={(e) => {
+                                                            if (e && e.stopPropagation) e.stopPropagation();
+                                                            setInvoiceOrder(order);
+                                                        }}
+                                                        title="View Tax Invoice"
+                                                    >
+                                                        <Printer size={14} />
+                                                        <span>View Invoice</span>
+                                                    </button>
+
+                                                    <button
+                                                        className="qc-order-action-btn secondary"
                                                         onClick={(e) => generateInvoiceForOrder(order, e)}
                                                         title="Download Tax Invoice as PDF"
                                                     >
                                                         <Download size={14} />
-                                                        <span>Download Invoice</span>
+                                                        <span>Download PDF</span>
                                                     </button>
 
                                                     {status === 'placed' && (

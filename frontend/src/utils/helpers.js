@@ -42,8 +42,12 @@ export function formatProductImage(rawImage) {
         return '/assets/Tshirts1.jpg';
     }
 
-    // Ensure leading slash if starting with assets/
-    if (img.startsWith('assets/')) {
+    // Ensure leading slash if starting with assets/, uploads/, images/, static/
+    if (img.startsWith('assets/') || img.startsWith('uploads/') || img.startsWith('images/') || img.startsWith('static/')) {
+        return '/' + img;
+    }
+
+    if (img.startsWith('banner')) {
         return '/' + img;
     }
 
@@ -92,8 +96,153 @@ export function safeNum(val) {
     return isNaN(n) ? 0 : n;
 }
 
+export function getInvoiceDetails(order, currentUser = null, profilePhone = '') {
+    if (!order) return null;
+
+    const addr = (order && typeof order.address === 'object' && order.address)
+        || (order && typeof order.shippingAddress === 'object' && order.shippingAddress)
+        || (order && typeof order.deliveryAddress === 'object' && order.deliveryAddress)
+        || null;
+
+    const rawAddrStr = typeof order?.address === 'string' ? order.address : '';
+
+    // 1. Billing Name: MUST be the name in the address, NOT in the account!
+    const billingName = (addr?.name && String(addr.name).trim())
+        || (addr?.fullName && String(addr.fullName).trim())
+        || (order?.customerName && String(order.customerName).trim())
+        || (order?.name && String(order.name).trim())
+        || (rawAddrStr && rawAddrStr.split(',')[0]?.trim())
+        || (currentUser?.name && String(currentUser.name).trim())
+        || (currentUser?.email ? currentUser.email.split('@')[0] : 'Valued Customer');
+
+    // 2. Phone: phone in address or profilePhone or account
+    const phone = (addr?.phone && String(addr.phone).trim())
+        || (order?.phone && String(order.phone).trim())
+        || (profilePhone && String(profilePhone).trim())
+        || (currentUser?.phone && String(currentUser.phone).trim())
+        || 'N/A';
+
+    // 3. Address Lines & Full Address
+    const streetParts = [addr?.line1, addr?.line2, addr?.street, addr?.address].filter(Boolean).map(s => String(s).trim());
+    const street = streetParts.join(', ');
+    const city = addr?.city ? String(addr.city).trim() : (order?.city || '');
+    const state = addr?.state ? String(addr.state).trim() : (order?.state || '');
+    const pincode = addr?.pincode || addr?.zip || addr?.postalCode || order?.zip || order?.pincode || '';
+    const country = addr?.country || 'India';
+
+    let fullAddress = '';
+    if (street || city || state || pincode) {
+        const parts = [];
+        if (street) parts.push(street);
+        if (city) parts.push(city);
+        if (state) parts.push(state);
+        if (pincode) parts.push(pincode.startsWith('PIN') ? pincode : `PIN: ${pincode}`);
+        if (country && country !== 'India') parts.push(country);
+        fullAddress = parts.join(', ');
+    } else if (rawAddrStr) {
+        fullAddress = rawAddrStr;
+    } else {
+        fullAddress = 'Standard Delivery Address on File';
+    }
+
+    // 4. Identification & Dates
+    const rawId = String(order.trackingId ? order.trackingId.replace('QC-TRK-', '') : (order._id || order.id || order.orderRef || '001'));
+    const invoiceNo = 'INV-' + rawId.slice(-8).toUpperCase();
+    const orderRef = String(order.orderRef || order.trackingId || order._id || 'N/A');
+    const trackingId = order.trackingId || '';
+    const trackingRoute = trackingId ? `/tracking?id=${encodeURIComponent(trackingId)}` : (order._id ? `/tracking?id=${encodeURIComponent(order._id)}` : '/tracking');
+
+    const rawDate = order.createdAt || order.date;
+    let orderDateStr = 'N/A';
+    if (rawDate) {
+        const d = new Date(rawDate);
+        orderDateStr = isNaN(d.getTime()) ? String(rawDate) : (d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
+    } else {
+        orderDateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    // 5. Payment details
+    const methodRaw = String(order.paymentMethod || 'cod').toLowerCase();
+    const isCod = methodRaw === 'cod';
+    let paymentMethod = 'Cash on Delivery (COD)';
+    if (methodRaw === 'upi') paymentMethod = 'UPI (Instant Transfer)';
+    else if (methodRaw === 'razorpay') paymentMethod = 'Online / Razorpay Secured';
+    else if (methodRaw === 'card') paymentMethod = 'Credit / Debit Card';
+    else if (methodRaw === 'netbanking') paymentMethod = 'Net Banking';
+    else if (!isCod) paymentMethod = `Prepaid (${methodRaw.toUpperCase()})`;
+
+    const paymentStatus = isCod ? 'PAY ON DELIVERY' : 'PAID IN FULL';
+
+    // 6. Items
+    const items = (order.items || []).map((item, idx) => {
+        const qty = Number(item.qty || item.quantity) || 1;
+        const price = Number(item.price) || 0;
+        const total = qty * price;
+        const name = item.name || 'Product';
+        const description = item.description || (item.subcategory ? `${item.category ? item.category + ' • ' : ''}${item.subcategory}` : (item.category || ''));
+        const image = formatProductImage(item.image);
+        return {
+            idx: idx + 1,
+            id: item.id || `item-${idx}`,
+            name,
+            description,
+            image,
+            qty,
+            price,
+            total
+        };
+    });
+
+    // 7. Calculations
+    const subtotal = items.reduce((acc, item) => acc + item.total, 0);
+    const deliveryFee = order.deliveryFee !== undefined ? Number(order.deliveryFee) : (subtotal >= 199 ? 0 : 40);
+    const couponDiscount = Number(order.couponDiscount || order.discountAmount) || 0;
+    const freeCashUsed = Number(order.freeCashUsed) || 0;
+    const grandTotal = Number(order.total || order.totalAmount) || Math.max(0, subtotal + deliveryFee - couponDiscount - freeCashUsed);
+
+    // GST Breakdown (groceries/essentials 5% total = 2.5% CGST + 2.5% SGST)
+    const taxableBase = grandTotal / 1.05;
+    const cgst = (taxableBase * 0.025).toFixed(2);
+    const sgst = (taxableBase * 0.025).toFixed(2);
+
+    const storeOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://speedmart-order.netlify.app';
+
+    return {
+        invoiceNo,
+        orderRef,
+        trackingId,
+        trackingRoute,
+        orderDateStr,
+        billingName,
+        phone,
+        street,
+        city,
+        state,
+        pincode,
+        country,
+        fullAddress,
+        isCod,
+        paymentMethod,
+        paymentStatus,
+        paymentId: order.paymentId || (isCod ? 'N/A (Cash on Delivery)' : 'Prepaid'),
+        items,
+        subtotal,
+        deliveryFee,
+        couponCode: order.couponCode || '',
+        couponDiscount,
+        freeCashUsed,
+        grandTotal,
+        cgst,
+        sgst,
+        storeOrigin,
+        status: (order.status || 'placed').toLowerCase()
+    };
+}
+
 export function downloadInvoicePdf(order, currentUser = null, profilePhone = '') {
     if (!order) return;
+    const inv = getInvoiceDetails(order, currentUser, profilePhone);
+    if (!inv) return;
 
     function cleanText(str) {
         return String(str || '')
@@ -104,30 +253,21 @@ export function downloadInvoicePdf(order, currentUser = null, profilePhone = '')
             .replace(/\)/g, '\\)');
     }
 
-    const invoiceNo = 'INV-' + String(order._id || order.id || order.orderRef || '001').slice(-8).toUpperCase();
-    const orderRef = String(order.orderRef || order._id || 'N/A');
-
-    // Dates
-    const rawDate = order.createdAt || order.date;
-    let orderDateStr = 'N/A';
-    if (rawDate) {
-        const d = new Date(rawDate);
-        orderDateStr = isNaN(d.getTime()) ? String(rawDate) : (d.toLocaleDateString('en-IN') + ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
-    } else {
-        orderDateStr = new Date().toLocaleDateString('en-IN');
-    }
-
-    const customerName = cleanText(order.name || (currentUser?.email ? currentUser.email.split('@')[0] : 'Valued Customer'));
-    const customerPhone = cleanText(order.phone || profilePhone || 'N/A');
-    const fullAddress = cleanText((order.address || 'N/A') + (order.city ? ', ' + order.city : '') + (order.zip ? ' - ' + order.zip : ''));
-    const isCod = order.paymentMethod === 'cod';
-    const paymentMethod = cleanText(isCod ? 'Cash on Delivery (COD)' : ('Online / ' + (order.paymentMethod ? String(order.paymentMethod).toUpperCase() : 'Prepaid')));
-
-    const items = order.items || [];
-    const subtotal = items.reduce((acc, item) => acc + ((Number(item.qty || item.quantity) || 1) * (Number(item.price) || 0)), 0);
-    const deliveryFee = order.deliveryFee !== undefined ? Number(order.deliveryFee) || 0 : (subtotal >= 500 ? 0 : 40);
-    const discount = Number(order.couponDiscount || order.discountAmount) || 0;
-    const grandTotal = Number(order.total || order.totalAmount) || (subtotal + deliveryFee - discount);
+    const customerName = cleanText(inv.billingName);
+    const customerPhone = cleanText(inv.phone);
+    const fullAddress = cleanText(inv.fullAddress);
+    const isCod = inv.isCod;
+    const paymentMethod = cleanText(inv.paymentMethod);
+    const invoiceNo = cleanText(inv.invoiceNo);
+    const orderRef = cleanText(inv.orderRef);
+    const trackingId = cleanText(inv.trackingId);
+    const orderDateStr = cleanText(inv.orderDateStr);
+    const subtotal = inv.subtotal;
+    const deliveryFee = inv.deliveryFee;
+    const discount = inv.couponDiscount;
+    const freeCashUsed = inv.freeCashUsed;
+    const grandTotal = inv.grandTotal;
+    const items = inv.items;
 
     let stream = '';
 
@@ -138,7 +278,7 @@ export function downloadInvoicePdf(order, currentUser = null, profilePhone = '')
     stream += 'BT /F2 22 Tf 0.047 0.514 0.122 rg 40 792 Td (QuickCart) Tj ET\n';
     stream += 'BT /F1 9 Tf 0.28 0.33 0.39 rg 40 778 Td (Express 10-Minute Supermarket & Daily Essentials) Tj ET\n';
     stream += 'BT /F1 8 Tf 0.42 0.48 0.55 rg 40 765 Td (GSTIN: 19AAACQ1234F1Z5 | FSSAI Lic: 12823019000456) Tj ET\n';
-    stream += 'BT /F1 8 Tf 0.42 0.48 0.55 rg 40 753 Td (Support: support@quickcart.com | Web: www.quickcart.com) Tj ET\n';
+    stream += 'BT /F1 8 Tf 0.42 0.48 0.55 rg 40 753 Td (Support: support@quickcart.com | Web: ' + cleanText(inv.storeOrigin.replace(/^https?:\/\//, '')) + ') Tj ET\n';
 
     // Tax Invoice Badge (Right)
     stream += 'BT /F2 18 Tf 0.06 0.09 0.16 rg 420 792 Td (TAX INVOICE) Tj ET\n';
@@ -156,18 +296,18 @@ export function downloadInvoicePdf(order, currentUser = null, profilePhone = '')
 
     // Order Info (Left)
     stream += 'BT /F2 9.5 Tf 0.06 0.09 0.16 rg 52 715 Td (ORDER DETAILS) Tj ET\n';
-    stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 52 700 Td (Invoice No: ' + cleanText(invoiceNo) + ') Tj ET\n';
-    stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 52 687 Td (Order Ref: ' + cleanText(orderRef) + ') Tj ET\n';
-    stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 52 674 Td (Date: ' + cleanText(orderDateStr) + ') Tj ET\n';
+    stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 52 700 Td (Invoice No: ' + invoiceNo + ') Tj ET\n';
+    stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 52 687 Td (Tracking ID: ' + (trackingId || orderRef) + ') Tj ET\n';
+    stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 52 674 Td (Date: ' + orderDateStr + ') Tj ET\n';
     const statusLabel = cleanText((order.status || 'placed').toUpperCase());
-    stream += 'BT /F2 8.5 Tf 0.047 0.514 0.122 rg 52 660 Td (Status: ' + statusLabel + ') Tj ET\n';
+    stream += 'BT /F2 8.5 Tf 0.047 0.514 0.122 rg 52 660 Td (Status: ' + statusLabel + ' | 10-Min Fast Track) Tj ET\n';
 
-    // Customer Info (Right)
+    // Customer Info (Right) -> Uses Billing Name from Address!
     stream += 'BT /F2 9.5 Tf 0.06 0.09 0.16 rg 307 715 Td (BILLED & DELIVERED TO) Tj ET\n';
-    stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 307 700 Td (Customer: ' + customerName + ') Tj ET\n';
+    stream += 'BT /F2 8.5 Tf 0.08 0.12 0.2 rg 307 700 Td (Customer: ' + customerName + ') Tj ET\n';
     stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 307 687 Td (Phone: ' + customerPhone + ') Tj ET\n';
-    const addrLine1 = fullAddress.slice(0, 42);
-    const addrLine2 = fullAddress.length > 42 ? fullAddress.slice(42, 84) : '';
+    const addrLine1 = fullAddress.slice(0, 44);
+    const addrLine2 = fullAddress.length > 44 ? fullAddress.slice(44, 88) : '';
     stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 307 674 Td (Address: ' + addrLine1 + ') Tj ET\n';
     if (addrLine2) {
         stream += 'BT /F1 8.5 Tf 0.2 0.25 0.3 rg 307 662 Td (' + addrLine2 + ') Tj ET\n';
@@ -178,7 +318,7 @@ export function downloadInvoicePdf(order, currentUser = null, profilePhone = '')
     // Table Header
     stream += '0.06 0.09 0.16 rg 40 615 515 20 re f\n';
     stream += 'BT /F2 8.5 Tf 1 1 1 rg 50 621 Td (#) Tj ET\n';
-    stream += 'BT /F2 8.5 Tf 1 1 1 rg 85 621 Td (PRODUCT DESCRIPTION) Tj ET\n';
+    stream += 'BT /F2 8.5 Tf 1 1 1 rg 85 621 Td (PRODUCT DESCRIPTION & CATEGORY) Tj ET\n';
     stream += 'BT /F2 8.5 Tf 1 1 1 rg 350 621 Td (QTY) Tj ET\n';
     stream += 'BT /F2 8.5 Tf 1 1 1 rg 410 621 Td (UNIT PRICE) Tj ET\n';
     stream += 'BT /F2 8.5 Tf 1 1 1 rg 495 621 Td (AMOUNT) Tj ET\n';
@@ -187,10 +327,11 @@ export function downloadInvoicePdf(order, currentUser = null, profilePhone = '')
     let curY = 595;
     const rowHeight = 22;
     items.slice(0, 15).forEach((item, idx) => {
-        const qty = Number(item.qty || item.quantity) || 1;
-        const price = Number(item.price) || 0;
-        const total = qty * price;
-        const name = cleanText(item.name || 'Product').slice(0, 42);
+        const qty = item.qty;
+        const price = item.price;
+        const total = item.total;
+        const descSuffix = item.description ? (' (' + item.description.slice(0, 18) + ')') : '';
+        const name = cleanText(item.name + descSuffix).slice(0, 44);
         if (idx % 2 === 1) {
             stream += '0.97 0.98 0.99 rg 40 ' + (curY - 5) + ' 515 ' + rowHeight + ' re f\n';
         }
@@ -209,13 +350,13 @@ export function downloadInvoicePdf(order, currentUser = null, profilePhone = '')
     const summaryTop = curY - 20;
     stream += '0.96 0.97 0.98 rg 40 ' + (summaryTop - 70) + ' 260 70 re f\n';
     stream += '0.23 0.51 0.96 RG 3 w 40 ' + (summaryTop - 70) + ' m 40 ' + summaryTop + ' l S\n';
-    stream += 'BT /F2 8.5 Tf 0.1 0.15 0.2 rg 50 ' + (summaryTop - 15) + ' Td (Terms & Conditions:) Tj ET\n';
-    stream += 'BT /F1 7.5 Tf 0.3 0.35 0.4 rg 50 ' + (summaryTop - 30) + ' Td (* Computer-generated tax invoice. No physical signature needed.) Tj ET\n';
-    stream += 'BT /F1 7.5 Tf 0.3 0.35 0.4 rg 50 ' + (summaryTop - 44) + ' Td (* Includes applicable GST (CGST 2.5% + SGST 2.5%).) Tj ET\n';
-    stream += 'BT /F1 7.5 Tf 0.3 0.35 0.4 rg 50 ' + (summaryTop - 58) + ' Td (* For returns or support, contact within 24 hours of delivery.) Tj ET\n';
+    stream += 'BT /F2 8.5 Tf 0.1 0.15 0.2 rg 50 ' + (summaryTop - 15) + ' Td (Terms & Information:) Tj ET\n';
+    stream += 'BT /F1 7.5 Tf 0.3 0.35 0.4 rg 50 ' + (summaryTop - 30) + ' Td (* Computer-generated tax invoice. No signature needed.) Tj ET\n';
+    stream += 'BT /F1 7.5 Tf 0.3 0.35 0.4 rg 50 ' + (summaryTop - 44) + ' Td (* Inclusive of 5% GST (CGST 2.5% + SGST 2.5%).) Tj ET\n';
+    stream += 'BT /F1 7.5 Tf 0.3 0.35 0.4 rg 50 ' + (summaryTop - 58) + ' Td (* Track order anytime at: ' + cleanText(inv.storeOrigin.replace(/^https?:\/\//, '')) + '/tracking) Tj ET\n';
 
-    stream += '0.97 0.98 0.99 rg 315 ' + (summaryTop - 90) + ' 240 90 re f\n';
-    stream += '0.82 0.86 0.9 RG 0.8 w 315 ' + (summaryTop - 90) + ' 240 90 re S\n';
+    stream += '0.97 0.98 0.99 rg 315 ' + (summaryTop - 100) + ' 240 100 re f\n';
+    stream += '0.82 0.86 0.9 RG 0.8 w 315 ' + (summaryTop - 100) + ' 240 100 re S\n';
 
     let totY = summaryTop - 16;
     stream += 'BT /F1 8.5 Tf 0.3 0.35 0.4 rg 325 ' + totY + ' Td (Items Subtotal:) Tj ET\n';
@@ -232,6 +373,12 @@ export function downloadInvoicePdf(order, currentUser = null, profilePhone = '')
         stream += 'BT /F2 8.5 Tf 0.047 0.514 0.122 rg 475 ' + totY + ' Td (-Rs. ' + discount.toFixed(2) + ') Tj ET\n';
     }
 
+    if (freeCashUsed > 0) {
+        totY -= 15;
+        stream += 'BT /F1 8.5 Tf 0.047 0.514 0.122 rg 325 ' + totY + ' Td (Free Cash Wallet:) Tj ET\n';
+        stream += 'BT /F2 8.5 Tf 0.047 0.514 0.122 rg 475 ' + totY + ' Td (-Rs. ' + freeCashUsed.toFixed(2) + ') Tj ET\n';
+    }
+
     totY -= 10;
     stream += '0.8 0.85 0.9 RG 0.8 w 325 ' + totY + ' m 545 ' + totY + ' l S\n';
 
@@ -245,7 +392,7 @@ export function downloadInvoicePdf(order, currentUser = null, profilePhone = '')
 
     // Footer
     stream += '0.8 0.85 0.9 RG 1 w 40 50 m 555 50 l S\n';
-    stream += 'BT /F2 9.5 Tf 0.047 0.514 0.122 rg 180 34 Td (Thank you for shopping with QuickCart! 10-Min Superstore) Tj ET\n';
+    stream += 'BT /F2 9.5 Tf 0.047 0.514 0.122 rg 160 34 Td (Thank you for shopping with QuickCart! 10-Minute Superstore) Tj ET\n';
 
     // Build PDF Binary String
     const streamLen = new TextEncoder().encode(stream).length;
