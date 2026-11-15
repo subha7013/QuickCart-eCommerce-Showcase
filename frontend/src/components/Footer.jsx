@@ -111,10 +111,7 @@ export default function Footer() {
 
             <div className="qc-footer-bottom">
                 <div className="qc-footer-container qc-footer-bottom-flex">
-                    <p>© 2026 QuickCart. All rights reserved.</p>
-                    <p className="qc-footer-made-with">
-                        Crafted by <a style={{ color: 'white' ,    textDecoration: 'none'}} href="https://subhasish713.netlify.app/" target="_blank" rel="noopener noreferrer">SN</a> <Heart size={14} color="#ef4444" fill="#ef4444" /> for lightning-fast Indian eCommerce.
-                    </p>
+                    <p>© 2026 QuickCart. All rights reserved.Crafted by<a style={{ color: 'white' ,    textDecoration: 'none'}} href="https://subhasish713.netlify.app/" target="_blank" rel="noopener noreferrer">SN</a> <Heart size={14} color="#ef4444" fill="#ef4444" /></p>
                 </div>
             </div>
         </footer>
