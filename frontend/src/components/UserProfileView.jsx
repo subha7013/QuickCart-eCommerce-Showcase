@@ -671,6 +671,23 @@ export default function UserProfileView() {
                             <span>My Orders ({orders.length})</span>
                         </button>
 
+                        {orders && orders.length > 0 && (
+                            <button
+                                className="qc-profile-tab-btn"
+                                onClick={() => {
+                                    const targetOrder = activeTrackingOrder || orders.find(o => ['placed', 'processing', 'packed', 'shipped', 'out_for_delivery'].includes(o.status)) || orders[0];
+                                    if (targetOrder) setActiveTrackingOrder(targetOrder);
+                                    const trackId = targetOrder?.trackingId || targetOrder?._id;
+                                    setCurrentView('tracking', { query: trackId ? `id=${encodeURIComponent(trackId)}` : '' });
+                                }}
+                                title="Open Live Visual Tracking"
+                                style={{ color: 'var(--qc-primary, #2874f0)', fontWeight: 600 }}
+                            >
+                                <Truck size={18} />
+                                <span>Track Active Order</span>
+                            </button>
+                        )}
+
                         <button
                             className={`qc-profile-tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
                             onClick={() => setActiveTab('payments')}

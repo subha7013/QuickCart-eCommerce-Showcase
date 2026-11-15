@@ -88,7 +88,8 @@ export default function Footer() {
                     <div className="qc-footer-col">
                         <h4>Customer Care & Services</h4>
                         <ul>
-                            <li><a href="/orders" onClick={(e) => { e.preventDefault(); setCurrentView('orders'); }}>My Orders & Live Tracking</a></li>
+                            <li><a href="/orders" onClick={(e) => { e.preventDefault(); setCurrentView('orders'); }}>My Past Orders</a></li>
+                            <li><a href="/tracking" onClick={(e) => { e.preventDefault(); setCurrentView('tracking'); }}>Live Order Tracking</a></li>
                             <li><a href="/profile" onClick={(e) => { e.preventDefault(); setCurrentView('profile'); }}>Saved Delivery Addresses</a></li>
                             <li><a href="/profile" onClick={(e) => { e.preventDefault(); setCurrentView('profile'); }}>Free Cash Wallet & Vouchers</a></li>
                             <li><a href="/profile" onClick={(e) => { e.preventDefault(); setCurrentView('profile'); }}>24x7 AI Chatbot Support</a></li>
