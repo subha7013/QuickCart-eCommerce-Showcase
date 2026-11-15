@@ -1785,13 +1785,7 @@ export default function AdminDashboard() {
                                                         <span className="qc-vip-badge">👑 Premier VIP Member</span>
                                                     )}
                                                 </div>
-                                                <div className="qc-profile-submeta">
-                                                    <span>📞 {selectedCustomer.phone || 'No phone registered'}</span>
-                                                    <span>•</span>
-                                                    <span>📅 Member Since: {new Date(selectedCustomer.createdAt).toLocaleDateString()}</span>
-                                                    <span>•</span>
-                                                    <span>📍 {selectedCustomer.addresses?.length || 0} Saved Addresses</span>
-                                                </div>
+                                                
                                             </div>
                                         </div>
 

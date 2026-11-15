@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     User, Smartphone, BadgeCheck, RotateCw, XCircle, Lock, Printer, Download,
-    ChevronUp, ChevronDown, Truck, Clock, CheckCircle2, Package,
+    ChevronUp, ChevronDown, ChevronRight, Truck, Clock, CheckCircle2, Package,
     Banknote, ShoppingBag, AlertCircle, MapPin, CreditCard, Gift,
     Shield, Headphones, LogOut, Plus, Trash2, Heart, ExternalLink,
     Sparkles, ShieldCheck, Search, Calendar, Zap
@@ -610,14 +610,13 @@ export default function UserProfileView() {
                     </div>
                     <div className="qc-profile-hero-text">
                         <div className="qc-hero-name-row">
-                            <h2>Welcome, {currentUser.email?.split('@')[0]}!</h2>
+                            <h2>Welcome, {currentUser.email?.split('@')[0]}! 👋</h2>
                             <span className="qc-vip-badge">
-                                <BadgeCheck size={14} /> QuickCart VIP Member
+                                👑 QuickCart VIP Member
                             </span>
                         </div>
                         <p className="qc-hero-contact-row">
-                            <span><User size={12} /> {currentUser.email}</span>
-                            <span><Smartphone size={12} /> {profilePhone || 'Phone: +91 98765 43210'}</span>
+                            <span>Member since • ⏱ 23:32</span>
                         </p>
                     </div>
                 </div>
@@ -659,7 +658,8 @@ export default function UserProfileView() {
                 {/* Left Sidebar Menu */}
                 <aside className="qc-profile-sidebar">
                     <div className="qc-profile-sidebar-header">
-                        <span className="qc-sidebar-title">Account Menu</span>
+                        <span className="qc-sidebar-accent-bar"></span>
+                        <span className="qc-sidebar-title">ACCOUNT MENU</span>
                     </div>
 
                     <div className="qc-profile-nav-tabs">
@@ -667,56 +667,77 @@ export default function UserProfileView() {
                             className={`qc-profile-tab-btn ${activeTab === 'orders' ? 'active' : ''}`}
                             onClick={() => setActiveTab('orders')}
                         >
-                            <Package size={18} />
-                            <span>My Orders ({orders.length})</span>
+                            <div className="qc-tab-btn-content">
+                                <ShoppingBag size={18} />
+                                <span>My Orders ({orders.length})</span>
+                            </div>
+                            {activeTab === 'orders' && <ChevronRight size={15} className="qc-tab-chevron" />}
                         </button>
 
                         <button
                             className={`qc-profile-tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
                             onClick={() => setActiveTab('payments')}
                         >
-                            <CreditCard size={18} />
-                            <span>Payment Methods</span>
+                            <div className="qc-tab-btn-content">
+                                <CreditCard size={18} />
+                                <span>Payment Methods</span>
+                            </div>
+                            {activeTab === 'payments' && <ChevronRight size={15} className="qc-tab-chevron" />}
                         </button>
 
                         <button
                             className={`qc-profile-tab-btn ${activeTab === 'addresses' ? 'active' : ''}`}
                             onClick={() => setActiveTab('addresses')}
                         >
-                            <MapPin size={18} />
-                            <span>Addresses ({addresses.length})</span>
+                            <div className="qc-tab-btn-content">
+                                <MapPin size={18} />
+                                <span>Addresses ({addresses.length})</span>
+                            </div>
+                            {activeTab === 'addresses' && <ChevronRight size={15} className="qc-tab-chevron" />}
                         </button>
 
                         <button
                             className={`qc-profile-tab-btn ${activeTab === 'wishlist' ? 'active' : ''}`}
                             onClick={() => setActiveTab('wishlist')}
                         >
-                            <Heart size={18} />
-                            <span>Wishlist ({wishlist.length})</span>
+                            <div className="qc-tab-btn-content">
+                                <Heart size={18} />
+                                <span>Wishlist ({wishlist.length})</span>
+                            </div>
+                            {activeTab === 'wishlist' && <ChevronRight size={15} className="qc-tab-chevron" />}
                         </button>
 
                         <button
                             className={`qc-profile-tab-btn ${activeTab === 'freecash' ? 'active' : ''}`}
                             onClick={() => setActiveTab('freecash')}
                         >
-                            <Gift size={18} />
-                            <span>Gift Card / Free Cash (₹{freeCash})</span>
+                            <div className="qc-tab-btn-content">
+                                <Gift size={18} />
+                                <span>Gift Card / Free Cash (₹{freeCash})</span>
+                            </div>
+                            {activeTab === 'freecash' && <ChevronRight size={15} className="qc-tab-chevron" />}
                         </button>
 
                         <button
                             className={`qc-profile-tab-btn ${activeTab === 'privacy' ? 'active' : ''}`}
                             onClick={() => setActiveTab('privacy')}
                         >
-                            <Shield size={18} />
-                            <span>Privacy Center</span>
+                            <div className="qc-tab-btn-content">
+                                <Shield size={18} />
+                                <span>Privacy Center</span>
+                            </div>
+                            {activeTab === 'privacy' && <ChevronRight size={15} className="qc-tab-chevron" />}
                         </button>
 
                         <button
                             className={`qc-profile-tab-btn ${activeTab === 'support' ? 'active' : ''}`}
                             onClick={() => setActiveTab('support')}
                         >
-                            <Headphones size={18} />
-                            <span>Customer Support & AI</span>
+                            <div className="qc-tab-btn-content">
+                                <Headphones size={18} />
+                                <span>Customer Support & AI</span>
+                            </div>
+                            {activeTab === 'support' && <ChevronRight size={15} className="qc-tab-chevron" />}
                         </button>
 
                         {isAdmin && (
@@ -725,10 +746,24 @@ export default function UserProfileView() {
                                 onClick={() => setCurrentView('admin')}
                                 style={{ color: '#2563eb', fontWeight: 700 }}
                             >
-                                <Shield size={18} />
-                                <span>Admin Dashboard</span>
+                                <div className="qc-tab-btn-content">
+                                    <Shield size={18} />
+                                    <span>Admin Dashboard</span>
+                                </div>
                             </button>
                         )}
+                    </div>
+
+                    {/* Bottom Promo Card in Sidebar */}
+                    <div className="qc-sidebar-promo-card">
+                        <div className="qc-promo-cart-graphic">
+                            <img src="/assets/sidebar-cart-promo.png" alt="QuickCart 10-Min Superstore" className="qc-promo-cart-img" />
+                        </div>
+                        <div className="qc-promo-text-block">
+                            <strong className="qc-promo-line1">Shop Smart</strong>
+                            <strong className="qc-promo-line2">Live Better</strong>
+                            <span className="qc-promo-brand">with QuickCart <span className="qc-heart-red">❤️</span></span>
+                        </div>
                     </div>
                 </aside>
 
@@ -749,7 +784,6 @@ export default function UserProfileView() {
                                         setIsRefreshingOrders(true);
                                         await loadOrders();
                                         setIsRefreshingOrders(false);
-                                        showToast('Order statuses refreshed from warehouse 🔄');
                                     }}
                                     disabled={isRefreshingOrders}
                                     title="Sync latest status from admin"
@@ -847,14 +881,7 @@ export default function UserProfileView() {
                                                         <span>View Invoice</span>
                                                     </button>
 
-                                                    <button
-                                                        className="qc-order-action-btn secondary"
-                                                        onClick={(e) => generateInvoiceForOrder(order, e)}
-                                                        title="Download Tax Invoice as PDF"
-                                                    >
-                                                        <Download size={14} />
-                                                        <span>Download PDF</span>
-                                                    </button>
+                                    
 
                                                     {status === 'placed' && (
                                                         <button
@@ -1451,12 +1478,21 @@ export default function UserProfileView() {
                     {/* 7. CUSTOMER SUPPORT & AI CHATBOT */}
                     {activeTab === 'support' && (
                         <div className="qc-support-tab-section">
-                            <div className="qc-section-heading-row">
-                                <div>
-                                    <h3>24x7 Intelligent Customer Support</h3>
-                                    <p>
-                                        Chat real-time with our AI assistant like a human agent. If unresolved, your inquiry is automatically escalated to an Admin Priority Incident.
-                                    </p>
+                            <div className="qc-support-top-header">
+                                <div className="qc-support-header-left">
+                                    <div className="qc-support-icon-circle">
+                                        <Headphones size={22} />
+                                    </div>
+                                    <div className="qc-support-title-block">
+                                        <h3 className="qc-support-title">24×7 Intelligent Customer Support</h3>
+                                        <p className="qc-support-subtitle">
+                                            Chat real-time with our AI assistant like a human agent. If unresolved, your inquiry is automatically escalated to an Admin Priority incident.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="qc-support-online-badge">
+                                    <span className="qc-online-sparkle">✦</span>
+                                    <span>Online Now</span>
                                 </div>
                             </div>
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     Bot, Send, User, AlertCircle, CheckCircle2, LifeBuoy,
-    ExternalLink, ArrowRight, ShieldAlert, Sparkles, MessageSquare
+    ExternalLink, ArrowRight, ShieldAlert, Sparkles, MessageSquare,
+    ChevronDown, Package, Star
 } from 'lucide-react';
 import { useApp } from '../context/AppContext.jsx';
 
@@ -21,17 +22,53 @@ export default function SupportChatbot() {
         {
             id: 1,
             sender: 'bot',
-            text: `Hello ${currentUser?.email ? currentUser.email.split('@')[0] : 'there'}! 👋 I'm Quickie, your 24x7 QuickCart Smart Support Assistant. How can I help you today?`,
+            text: `Hello ${currentUser?.email ? currentUser.email.split('@')[0] : 'there'}! 👋\nHow can I help you today?`,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
     ]);
     const [inputText, setInputText] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [selectedOrderId, setSelectedOrderId] = useState('');
+    const [isOrderDropdownOpen, setIsOrderDropdownOpen] = useState(false);
     const [escalatedTicketId, setEscalatedTicketId] = useState(null);
     const messagesEndRef = useRef(null);
+    const orderDropdownRef = useRef(null);
 
     const latestOrder = orders.length > 0 ? orders[0] : null;
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, isTyping]);
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (orderDropdownRef.current && !orderDropdownRef.current.contains(event.target)) {
+                setIsOrderDropdownOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    function getStatusBadge(status) {
+        const s = (status || 'placed').toLowerCase();
+        if (s === 'placed') {
+            return <span className="qc-dropdown-status-pill placed">🟢 Placed</span>;
+        } else if (s === 'cancelled') {
+            return <span className="qc-dropdown-status-pill cancelled">🔴 Cancelled</span>;
+        } else if (s === 'delivered') {
+            return <span className="qc-dropdown-status-pill delivered">🟢 Delivered</span>;
+        } else if (s === 'shipped') {
+            return <span className="qc-dropdown-status-pill shipped">🚚 Shipped</span>;
+        } else {
+            return <span className="qc-dropdown-status-pill other">{status}</span>;
+        }
+    }
+
+    const selectedOrder = orders.find(o => o._id === selectedOrderId);
+    const selectedOrderLabel = selectedOrder
+        ? (selectedOrder === latestOrder ? `Latest Order (${selectedOrder.trackingId || selectedOrder._id?.slice(-6)})` : `${selectedOrder.trackingId || selectedOrder._id?.slice(-6)}`)
+        : (latestOrder ? `Latest Order (${latestOrder.trackingId || latestOrder._id?.slice(-6)})` : 'Select Order');
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -197,20 +234,29 @@ export default function SupportChatbot() {
 
     return (
         <div className="qc-chatbot-card">
-            {/* Chatbot Header */}
-            <div className="qc-chatbot-header">
-                <div className="qc-bot-avatar-box">
-                    <Bot size={22} className="qc-bot-icon" />
-                    <span className="qc-online-dot"></span>
+            {/* Chatbot Dark Hero Banner */}
+            <div className="qc-chatbot-header dark-hero">
+                <div className="qc-bot-mascot-wrap">
+                    <img src="/assets/quickie-robot-mascot.png" alt="Quickie AI Mascot" className="qc-bot-mascot-img" />
+                    <span className="qc-bot-online-ring"></span>
                 </div>
+
                 <div className="qc-bot-header-info">
                     <div className="qc-bot-name-row">
                         <h4>Quickie AI Assistant</h4>
-                        <span className="qc-bot-verified-badge">
-                            <Sparkles size={11} /> Real-Time Support
+                        <span className="qc-bot-realtime-badge">
+                            <span className="qc-lightning-icon">⚡</span> Real-Time Support
                         </span>
                     </div>
-                    <p className="qc-bot-sub">Answers instantly like a human agent • 24x7 Active</p>
+                    <p className="qc-bot-sub">Ask questions, track orders, or get instant help</p>
+                </div>
+
+                {/* Background Decorative Speech Bubbles */}
+                <div className="qc-bot-header-bubbles" aria-hidden="true">
+                    <svg viewBox="0 0 120 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M15 10H75C80.5 10 85 14.5 85 20V36C85 41.5 80.5 46 75 46H35L20 56V46H15C9.5 46 5 41.5 5 36V20C5 14.5 9.5 10 15 10Z" fill="white" fillOpacity="0.08" />
+                        <path d="M55 24H105C109.4 24 113 27.6 113 32V44C113 48.4 109.4 52 105 52H95L86 59V52H55C50.6 52 47 48.4 47 44V32C47 27.6 50.6 24 55 24Z" fill="white" fillOpacity="0.05" />
+                    </svg>
                 </div>
 
                 {escalatedTicketId && (
@@ -224,19 +270,72 @@ export default function SupportChatbot() {
             {/* Order Selector (if user has orders) */}
             {orders.length > 0 && (
                 <div className="qc-chat-order-selector-bar">
-                    <span className="qc-selector-label">Inquiring about order:</span>
-                    <select
-                        value={selectedOrderId}
-                        onChange={(e) => setSelectedOrderId(e.target.value)}
-                        className="qc-chat-order-select"
-                    >
-                        <option value="">Latest Order ({latestOrder?.trackingId || latestOrder?._id?.slice(-6)})</option>
-                        {orders.map((o) => (
-                            <option key={o._id} value={o._id}>
-                                {o.trackingId || o._id.slice(-6)} — ₹{o.total} ({o.status})
-                            </option>
-                        ))}
-                    </select>
+                    <span className="qc-selector-label">
+                        <span className="qc-selector-cart-icon">🛒</span> Inquiring about order:
+                    </span>
+
+                    {/* Custom Order Dropdown Component */}
+                    <div className="qc-custom-order-dropdown" ref={orderDropdownRef}>
+                        <button
+                            type="button"
+                            className={`qc-dropdown-trigger-btn ${isOrderDropdownOpen ? 'open' : ''}`}
+                            onClick={() => setIsOrderDropdownOpen(!isOrderDropdownOpen)}
+                        >
+                            <div className="qc-dropdown-trigger-left">
+                                <span className="qc-dropdown-pkg-icon">📦</span>
+                                <span className="qc-dropdown-selected-label">{selectedOrderLabel}</span>
+                            </div>
+                            <ChevronDown size={16} className={`qc-dropdown-arrow ${isOrderDropdownOpen ? 'rotated' : ''}`} />
+                        </button>
+
+                        {isOrderDropdownOpen && (
+                            <div className="qc-floating-order-menu">
+                                {latestOrder && (
+                                    <div
+                                        className={`qc-floating-order-item featured ${selectedOrderId === '' || selectedOrderId === latestOrder._id ? 'selected' : ''}`}
+                                        onClick={() => {
+                                            setSelectedOrderId(latestOrder._id);
+                                            setIsOrderDropdownOpen(false);
+                                        }}
+                                    >
+                                        <div className="qc-floating-item-left">
+                                            <span className="qc-star-icon">⭐</span>
+                                            <span className="qc-item-order-name">
+                                                Latest Order ({latestOrder.trackingId || latestOrder._id.slice(-6)})
+                                            </span>
+                                        </div>
+                                        <div className="qc-floating-item-right">
+                                            {getStatusBadge(latestOrder.status)}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {orders.map((o) => {
+                                    const isSelected = selectedOrderId === o._id;
+                                    return (
+                                        <div
+                                            key={o._id}
+                                            className={`qc-floating-order-item ${isSelected ? 'selected' : ''}`}
+                                            onClick={() => {
+                                                setSelectedOrderId(o._id);
+                                                setIsOrderDropdownOpen(false);
+                                            }}
+                                        >
+                                            <div className="qc-floating-item-left">
+                                                <span className="qc-pkg-icon">📦</span>
+                                                <span className="qc-item-order-name">
+                                                    {o.trackingId || o._id.slice(-6)} — ₹{o.total}
+                                                </span>
+                                            </div>
+                                            <div className="qc-floating-item-right">
+                                                {getStatusBadge(o.status)}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 

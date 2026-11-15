@@ -374,14 +374,7 @@ export default function OrderTrackingView() {
                             <Printer size={13} />
                             <span>View Invoice</span>
                         </button>
-                        <button
-                            className="qc-order-action-btn secondary small"
-                            onClick={(e) => generateInvoiceForOrder(order, e)}
-                            title="Download Tax Invoice as PDF"
-                        >
-                            <Download size={13} />
-                            <span>Download PDF</span>
-                        </button>
+
                     </div>
                 </div>
 

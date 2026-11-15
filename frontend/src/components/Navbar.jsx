@@ -167,7 +167,8 @@ export default function Navbar() {
                                                 setIsCatDropdownOpen(false);
                                             }}
                                         >
-                                            🌟 View All Categories & Deals
+                                            <span className="qc-all-cat-star">🌟</span>
+                                            <span>View All Categories & Deals</span>
                                         </a>
                                     </div>
 
