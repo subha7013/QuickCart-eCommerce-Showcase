@@ -616,8 +616,8 @@ export default function UserProfileView() {
                             </span>
                         </div>
                         <p className="qc-hero-contact-row">
-                            <span>Member since • ⏱ 23:32</span>
-                        </p>
+                            <span>Member since • ⏱ {currentUser.createdAt ? new Date(currentUser.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '23:32'}</span>
+                        </p> 
                     </div>
                 </div>
 

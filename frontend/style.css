@@ -494,13 +494,13 @@ html, body {
 .qc-mega-menu {
     position: absolute;
     top: calc(100% + 10px);
-    left: 0;
-    right: auto;
+    right: -80px;
+    left: auto;
     background: #ffffff;
     color: var(--qc-text-main, #0f172a);
     border-radius: 16px;
-    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(15, 23, 42, 0.06);
-    width: 480px;
+    box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(15, 23, 42, 0.08);
+    width: 580px;
     max-width: calc(100vw - 32px);
     z-index: 1000;
     padding: 18px 20px;
@@ -512,7 +512,8 @@ html, body {
     content: '';
     position: absolute;
     top: -6px;
-    left: 42px;
+    right: 130px;
+    left: auto;
     width: 12px;
     height: 12px;
     background: #ffffff;
@@ -562,15 +563,15 @@ html, body {
 
 .qc-mega-columns-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
 }
 
 .qc-mega-column {
     background: #f8fafc;
     border: 1px solid #f1f5f9;
     border-radius: 12px;
-    padding: 14px 16px;
+    padding: 12px 14px;
     display: flex;
     flex-direction: column;
     transition: all 0.2s ease;
@@ -612,6 +613,9 @@ html, body {
     flex-direction: column;
     gap: 8px;
     flex: 1;
+    max-height: 280px;
+    overflow-y: auto;
+    scrollbar-width: thin;
 }
 
 .qc-subcat-item {

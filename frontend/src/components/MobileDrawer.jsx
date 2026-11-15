@@ -72,9 +72,11 @@ export default function MobileDrawer() {
                         </a>
                         <a
                             href="/categories"
-                            className={`drawer-link ${currentView === 'categories' ? 'active' : ''}`}
+                            className={`drawer-link ${currentView === 'categories' && !selectedCategoryName ? 'active' : ''}`}
                             onClick={(e) => {
                                 e.preventDefault();
+                                setSelectedCategoryName(null);
+                                setSelectedSubcategory(null);
                                 setCurrentView('categories');
                                 onClose();
                             }}
@@ -90,8 +92,8 @@ export default function MobileDrawer() {
                                     className={`drawer-sublink ${selectedCategoryName === cat.name ? 'active' : ''}`}
                                     onClick={() => {
                                         setSelectedCategoryName(cat.name);
-                                        setSelectedSubcategory(cat.subcategories[0] || null);
-                                        setCurrentView('home');
+                                        setSelectedSubcategory(null);
+                                        setCurrentView('categories');
                                         onClose();
                                     }}
                                 >

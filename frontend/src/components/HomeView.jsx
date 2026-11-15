@@ -196,37 +196,49 @@ export default function HomeView() {
                         <ArrowLeft size={16} />
                         <span>Back to Home</span>
                     </button>
-                    <div className="qc-categories-header-title">
-                        <h2>{selectedCategory ? `${selectedCategory.icon} ${selectedCategory.name} Collection` : '🌟 All Categories & Catalog'}</h2>
-                        <p>{selectedCategory ? selectedCategory.description : 'Explore our complete 10-minute lightning delivery superstore catalog'}</p>
-                    </div>
-                </div>
-            )}
 
-            {/* Categories Nav Tabs (When on Categories Page) */}
-            {isCategoriesView && !searchTerm && (
-                <div className="qc-categories-nav-tabs">
-                    <button
-                        className={`qc-cat-tab-btn ${!selectedCategoryName ? 'active' : ''}`}
-                        onClick={() => {
-                            setSelectedCategoryName(null);
-                            setSelectedSubcategory(null);
-                        }}
-                    >
-                        <span>🌟 All Categories ({categoryList.flatMap(c => c.products).length})</span>
-                    </button>
-                    {categoryList.map(cat => (
-                        <button
-                            key={cat.name}
-                            className={`qc-cat-tab-btn ${selectedCategoryName === cat.name ? 'active' : ''}`}
-                            onClick={() => {
-                                setSelectedCategoryName(cat.name);
-                                setSelectedSubcategory(null);
-                            }}
-                        >
-                            <span>{cat.icon} {cat.name} ({cat.products.length})</span>
-                        </button>
-                    ))}
+                    <div className="qc-cat-header-title-row">
+                        <h1>
+                            <span>{selectedCategory ? `${selectedCategory.icon} ${selectedCategory.name}` : '🌟 All Categories & Catalog'}</span>
+                            {selectedSubcategory && (
+                                <span className="qc-cat-header-subcat-badge">› {selectedSubcategory}</span>
+                            )}
+                        </h1>
+                        <span className="qc-cat-header-count">
+                            {filteredProducts.length} {filteredProducts.length === 1 ? 'item' : 'items'}
+                        </span>
+                    </div>
+
+                    <p className="qc-cat-header-subtitle">
+                        {selectedCategory ? selectedCategory.description : 'Explore our complete 10-minute lightning delivery superstore catalog'}
+                    </p>
+
+                    {/* Categories Nav Tabs Inside Header Card */}
+                    {!searchTerm && (
+                        <div className="qc-categories-nav-tabs">
+                            <button
+                                className={`qc-cat-tab-btn ${!selectedCategoryName ? 'active' : ''}`}
+                                onClick={() => {
+                                    setSelectedCategoryName(null);
+                                    setSelectedSubcategory(null);
+                                }}
+                            >
+                                <span>🌟 All Categories ({categoryList.flatMap(c => c.products).length})</span>
+                            </button>
+                            {categoryList.map(cat => (
+                                <button
+                                    key={cat.name}
+                                    className={`qc-cat-tab-btn ${selectedCategoryName === cat.name ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setSelectedCategoryName(cat.name);
+                                        setSelectedSubcategory(null);
+                                    }}
+                                >
+                                    <span>{cat.icon} {cat.name} ({cat.products.length})</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -501,10 +513,12 @@ export default function HomeView() {
             {/* 5. Subcategory Pills Bar (When Category Is Active) */}
             {(isCategoriesView || selectedCategory) && selectedCategory && !searchTerm && (
                 <div className="qc-subcat-pills-container">
-                    <div className="qc-subcat-header-title">
-                        <h3>{selectedCategory.icon} {selectedCategory.name} Collection</h3>
-                        <p>{selectedCategory.description}</p>
-                    </div>
+                    {!isCategoriesView && (
+                        <div className="qc-subcat-header-title">
+                            <h3>{selectedCategory.icon} {selectedCategory.name} Collection</h3>
+                            <p>{selectedCategory.description}</p>
+                        </div>
+                    )}
 
                     <div className="qc-subcat-pills-row">
                         <button
