@@ -824,7 +824,14 @@ export default function HomeView() {
                                     setCurrentView('tracking');
                                 }}
                             >
-                                <Truck size={14} /> <span>Expand Tracking View</span>
+                                <Truck size={14} /> <span>Open Full Tracking View</span>
+                            </button>
+                            <button
+                                className="qc-order-action-btn secondary"
+                                onClick={(e) => generateInvoiceForOrder(guestTrackResult, e)}
+                                title="Download Tax Invoice as PDF"
+                            >
+                                <Download size={14} /> <span>Download Invoice (PDF)</span>
                             </button>
                         </div>
                     </div>

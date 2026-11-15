@@ -14,10 +14,7 @@ export default function MobileDrawer() {
         categoryList,
         selectedCategoryName,
         setSelectedCategoryName,
-        setSelectedSubcategory,
-        orders,
-        activeTrackingOrder,
-        setActiveTrackingOrder
+        setSelectedSubcategory
     } = useApp();
 
     const onClose = () => setIsMobileDrawerOpen(false);
@@ -125,36 +122,13 @@ export default function MobileDrawer() {
                             </a>
                         )}
 
-                        {currentUser ? (
-                            <a
-                                href="/tracking"
-                                className={`drawer-link ${currentView === 'tracking' ? 'active' : ''}`}
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    const activeOrder = activeTrackingOrder || (orders && orders.length > 0
-                                        ? (orders.find(o => ['placed', 'processing', 'packed', 'shipped', 'out_for_delivery'].includes(o.status)) || orders[0])
-                                        : null);
-                                    if (activeOrder) {
-                                        setActiveTrackingOrder(activeOrder);
-                                        const trackId = activeOrder.trackingId || activeOrder._id;
-                                        setCurrentView('tracking', { query: `id=${encodeURIComponent(trackId)}` });
-                                    } else {
-                                        setCurrentView('tracking');
-                                    }
-                                    onClose();
-                                }}
-                            >
-                                <Truck size={18} /> Track My Order
-                            </a>
-                        ) : (
-                            <a
-                                href="/tracking"
-                                className={`drawer-link ${currentView === 'tracking' ? 'active' : ''}`}
-                                onClick={(e) => { e.preventDefault(); setCurrentView('tracking'); onClose(); }}
-                            >
-                                <Truck size={18} /> Track Any Order
-                            </a>
-                        )}
+                        <a
+                            href="/tracking"
+                            className={`drawer-link ${currentView === 'tracking' ? 'active' : ''}`}
+                            onClick={(e) => { e.preventDefault(); setCurrentView('tracking'); onClose(); }}
+                        >
+                            <Truck size={18} /> Track Any Order
+                        </a>
 
                         <a
                             href="/wishlist"

@@ -13,8 +13,6 @@ export default function OrderTrackingView() {
         activeTrackingOrder,
         setActiveTrackingOrder,
         orders,
-        loadOrders,
-        currentUser,
         setCurrentView,
         generateInvoiceForOrder,
         setInvoiceOrder,
@@ -22,22 +20,13 @@ export default function OrderTrackingView() {
         showToast
     } = useApp();
 
-    // Default to active / in-progress order, or latest order if none specifically active
-    const order = activeTrackingOrder || (orders.length > 0
-        ? (orders.find(o => ['placed', 'processing', 'packed', 'shipped', 'out_for_delivery'].includes(o.status)) || orders[0])
-        : null);
+    // Default to latest order if none specifically active
+    const order = activeTrackingOrder || (orders.length > 0 ? orders[0] : null);
 
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [searchTrackId, setSearchTrackId] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [lastUpdatedTime, setLastUpdatedTime] = useState(() => new Date().toLocaleTimeString());
-
-    // Auto-fetch orders if user is logged in and orders haven't loaded yet
-    useEffect(() => {
-        if (currentUser && orders.length === 0 && loadOrders) {
-            loadOrders();
-        }
-    }, [currentUser]);
 
     // 5 Real Milestones
     const MILESTONES = [
@@ -204,32 +193,6 @@ export default function OrderTrackingView() {
                 </button>
 
                 <div className="qc-tracking-header-right">
-                    {orders && orders.length > 1 && (
-                        <div className="qc-track-order-switcher-pill">
-                            <span>Order:</span>
-                            <select
-                                value={order?._id || ''}
-                                onChange={(e) => {
-                                    const selected = orders.find(o => o._id === e.target.value);
-                                    if (selected) {
-                                        setActiveTrackingOrder(selected);
-                                        const trackId = selected.trackingId || selected._id;
-                                        const newUrl = `/tracking?id=${encodeURIComponent(trackId)}`;
-                                        window.history.replaceState({ view: 'tracking' }, '', newUrl);
-                                    }
-                                }}
-                                className="qc-track-order-select"
-                                aria-label="Select order to track"
-                            >
-                                {orders.map((o) => (
-                                    <option key={o._id} value={o._id}>
-                                        {o.trackingId || `QC-TRK-${o._id.slice(-6)}`} ({(o.status || 'placed').toUpperCase()})
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-
                     <button
                         className="qc-track-refresh-btn"
                         onClick={handleRefreshStatus}
