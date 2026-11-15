@@ -615,9 +615,7 @@ export default function UserProfileView() {
                                 👑 QuickCart VIP Member
                             </span>
                         </div>
-                        <p className="qc-hero-contact-row">
-                            <span>Member since • ⏱ {currentUser.createdAt ? new Date(currentUser.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '23:32'}</span>
-                        </p> 
+
                     </div>
                 </div>
 
@@ -881,7 +879,7 @@ export default function UserProfileView() {
                                                         <span>View Invoice</span>
                                                     </button>
 
-                                    
+
 
                                                     {status === 'placed' && (
                                                         <button
