@@ -196,37 +196,49 @@ export default function HomeView() {
                         <ArrowLeft size={16} />
                         <span>Back to Home</span>
                     </button>
-                    <div className="qc-categories-header-title">
-                        <h2>{selectedCategory ? `${selectedCategory.icon} ${selectedCategory.name} Collection` : '🌟 All Categories & Catalog'}</h2>
-                        <p>{selectedCategory ? selectedCategory.description : 'Explore our complete 10-minute lightning delivery superstore catalog'}</p>
-                    </div>
-                </div>
-            )}
 
-            {/* Categories Nav Tabs (When on Categories Page) */}
-            {isCategoriesView && !searchTerm && (
-                <div className="qc-categories-nav-tabs">
-                    <button
-                        className={`qc-cat-tab-btn ${!selectedCategoryName ? 'active' : ''}`}
-                        onClick={() => {
-                            setSelectedCategoryName(null);
-                            setSelectedSubcategory(null);
-                        }}
-                    >
-                        <span>🌟 All Categories ({categoryList.flatMap(c => c.products).length})</span>
-                    </button>
-                    {categoryList.map(cat => (
-                        <button
-                            key={cat.name}
-                            className={`qc-cat-tab-btn ${selectedCategoryName === cat.name ? 'active' : ''}`}
-                            onClick={() => {
-                                setSelectedCategoryName(cat.name);
-                                setSelectedSubcategory(null);
-                            }}
-                        >
-                            <span>{cat.icon} {cat.name} ({cat.products.length})</span>
-                        </button>
-                    ))}
+                    <div className="qc-cat-header-title-row">
+                        <h1>
+                            <span>{selectedCategory ? `${selectedCategory.icon} ${selectedCategory.name}` : '🌟 All Categories & Catalog'}</span>
+                            {selectedSubcategory && (
+                                <span className="qc-cat-header-subcat-badge">› {selectedSubcategory}</span>
+                            )}
+                        </h1>
+                        <span className="qc-cat-header-count">
+                            {filteredProducts.length} {filteredProducts.length === 1 ? 'item' : 'items'}
+                        </span>
+                    </div>
+
+                    <p className="qc-cat-header-subtitle">
+                        {selectedCategory ? selectedCategory.description : 'Explore our complete 10-minute lightning delivery superstore catalog'}
+                    </p>
+
+                    {/* Categories Nav Tabs Inside Header Card */}
+                    {!searchTerm && (
+                        <div className="qc-categories-nav-tabs">
+                            <button
+                                className={`qc-cat-tab-btn ${!selectedCategoryName ? 'active' : ''}`}
+                                onClick={() => {
+                                    setSelectedCategoryName(null);
+                                    setSelectedSubcategory(null);
+                                }}
+                            >
+                                <span>🌟 All Categories ({categoryList.flatMap(c => c.products).length})</span>
+                            </button>
+                            {categoryList.map(cat => (
+                                <button
+                                    key={cat.name}
+                                    className={`qc-cat-tab-btn ${selectedCategoryName === cat.name ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setSelectedCategoryName(cat.name);
+                                        setSelectedSubcategory(null);
+                                    }}
+                                >
+                                    <span>{cat.icon} {cat.name} ({cat.products.length})</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -501,10 +513,12 @@ export default function HomeView() {
             {/* 5. Subcategory Pills Bar (When Category Is Active) */}
             {(isCategoriesView || selectedCategory) && selectedCategory && !searchTerm && (
                 <div className="qc-subcat-pills-container">
-                    <div className="qc-subcat-header-title">
-                        <h3>{selectedCategory.icon} {selectedCategory.name} Collection</h3>
-                        <p>{selectedCategory.description}</p>
-                    </div>
+                    {!isCategoriesView && (
+                        <div className="qc-subcat-header-title">
+                            <h3>{selectedCategory.icon} {selectedCategory.name} Collection</h3>
+                            <p>{selectedCategory.description}</p>
+                        </div>
+                    )}
 
                     <div className="qc-subcat-pills-row">
                         <button
@@ -719,125 +733,125 @@ export default function HomeView() {
                     </p>
 
                     <form onSubmit={handleGuestTrack} className="qc-guest-track-form">
-                    <div className="qc-guest-input-wrap">
-                        <Search size={18} className="qc-guest-search-icon" />
-                        <input
-                            type="text"
-                            placeholder="Enter Tracking ID or Order ID..."
-                            value={guestTrackQuery}
-                            onChange={(e) => setGuestTrackQuery(e.target.value)}
-                            required
-                        />
-                        <button
-                            type="submit"
-                            className="qc-guest-search-btn"
-                            disabled={isGuestTrackingLoading}
-                        >
-                            {isGuestTrackingLoading ? 'Searching...' : 'Track Order'}
-                        </button>
-                    </div>
-                </form>
-
-                {guestTrackError && (
-                    <div className="qc-track-error-alert">
-                        <AlertCircle size={16} />
-                        <span>{guestTrackError}</span>
-                    </div>
-                )}
-
-                {guestTrackResult && (
-                    <div className="qc-guest-order-card">
-                        <div className="qc-guest-order-header">
-                            <div>
-                                <h4>Order #{guestTrackResult._id?.slice(-8)}</h4>
-                                <span className="qc-guest-trk-pill">
-                                    <Truck size={13} /> {guestTrackResult.trackingId || ('QC-TRK-' + guestTrackResult._id?.slice(-6))}
-                                </span>
-                                <small className="qc-order-placed-time">
-                                    Placed on: {new Date(guestTrackResult.createdAt).toLocaleDateString('en-IN', {
-                                        day: 'numeric', month: 'short', year: 'numeric',
-                                        hour: '2-digit', minute: '2-digit'
-                                    })}
-                                </small>
-                            </div>
-                            <div className="qc-guest-status-badge-wrap">
-                                <span className={`qc-order-status-badge ${guestTrackResult.status}`}>
-                                    {(guestTrackResult.status || 'placed').replace(/_/g, ' ').toUpperCase()}
-                                </span>
-                                <span className="qc-live-pulse-indicator">
-                                    <span className="pulse-dot"></span> Live Status
-                                </span>
-                            </div>
+                        <div className="qc-guest-input-wrap">
+                            <Search size={18} className="qc-guest-search-icon" />
+                            <input
+                                type="text"
+                                placeholder="Enter Tracking ID or Order ID..."
+                                value={guestTrackQuery}
+                                onChange={(e) => setGuestTrackQuery(e.target.value)}
+                                required
+                            />
+                            <button
+                                type="submit"
+                                className="qc-guest-search-btn"
+                                disabled={isGuestTrackingLoading}
+                            >
+                                {isGuestTrackingLoading ? 'Searching...' : 'Track Order'}
+                            </button>
                         </div>
+                    </form>
 
-                        {/* Stepper if not cancelled */}
-                        {guestTrackResult.status === 'cancelled' ? (
-                            <div className="qc-track-cancelled-box">
-                                <XCircle size={20} />
+                    {guestTrackError && (
+                        <div className="qc-track-error-alert">
+                            <AlertCircle size={16} />
+                            <span>{guestTrackError}</span>
+                        </div>
+                    )}
+
+                    {guestTrackResult && (
+                        <div className="qc-guest-order-card">
+                            <div className="qc-guest-order-header">
                                 <div>
-                                    <strong>Order Cancelled</strong>
-                                    <p>This order was marked as cancelled. Any payments will be refunded.</p>
+                                    <h4>Order #{guestTrackResult._id?.slice(-8)}</h4>
+                                    <span className="qc-guest-trk-pill">
+                                        <Truck size={13} /> {guestTrackResult.trackingId || ('QC-TRK-' + guestTrackResult._id?.slice(-6))}
+                                    </span>
+                                    <small className="qc-order-placed-time">
+                                        Placed on: {new Date(guestTrackResult.createdAt).toLocaleDateString('en-IN', {
+                                            day: 'numeric', month: 'short', year: 'numeric',
+                                            hour: '2-digit', minute: '2-digit'
+                                        })}
+                                    </small>
+                                </div>
+                                <div className="qc-guest-status-badge-wrap">
+                                    <span className={`qc-order-status-badge ${guestTrackResult.status}`}>
+                                        {(guestTrackResult.status || 'placed').replace(/_/g, ' ').toUpperCase()}
+                                    </span>
+                                    <span className="qc-live-pulse-indicator">
+                                        <span className="pulse-dot"></span> Live Status
+                                    </span>
                                 </div>
                             </div>
-                        ) : (
-                            <div className="qc-guest-stepper">
-                                {MILESTONES.map((m, idx) => {
-                                    const currentIdx = getMilestoneIndex(guestTrackResult.status);
-                                    const isDone = idx <= currentIdx;
-                                    const isCurrent = idx === currentIdx;
-                                    return (
-                                        <div key={m.key} className={`qc-guest-step ${isDone ? 'done' : ''} ${isCurrent ? 'current' : ''}`}>
-                                            <div className="qc-guest-step-marker">
-                                                {isDone ? <CheckCircle2 size={16} /> : <span>{idx + 1}</span>}
+
+                            {/* Stepper if not cancelled */}
+                            {guestTrackResult.status === 'cancelled' ? (
+                                <div className="qc-track-cancelled-box">
+                                    <XCircle size={20} />
+                                    <div>
+                                        <strong>Order Cancelled</strong>
+                                        <p>This order was marked as cancelled. Any payments will be refunded.</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="qc-guest-stepper">
+                                    {MILESTONES.map((m, idx) => {
+                                        const currentIdx = getMilestoneIndex(guestTrackResult.status);
+                                        const isDone = idx <= currentIdx;
+                                        const isCurrent = idx === currentIdx;
+                                        return (
+                                            <div key={m.key} className={`qc-guest-step ${isDone ? 'done' : ''} ${isCurrent ? 'current' : ''}`}>
+                                                <div className="qc-guest-step-marker">
+                                                    {isDone ? <CheckCircle2 size={16} /> : <span>{idx + 1}</span>}
+                                                </div>
+                                                <span className="qc-guest-step-label">{m.label}</span>
                                             </div>
-                                            <span className="qc-guest-step-label">{m.label}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+                                        );
+                                    })}
+                                </div>
+                            )}
 
-                        <div className="qc-guest-meta-grid">
-                            <div className="qc-guest-meta-item">
-                                <span className="meta-label">Recipient:</span>
-                                <strong>{guestTrackResult.customerName || guestTrackResult.address?.name || 'Customer'}</strong>
+                            <div className="qc-guest-meta-grid">
+                                <div className="qc-guest-meta-item">
+                                    <span className="meta-label">Recipient:</span>
+                                    <strong>{guestTrackResult.customerName || guestTrackResult.address?.name || 'Customer'}</strong>
+                                </div>
+                                <div className="qc-guest-meta-item">
+                                    <span className="meta-label">Delivery Address:</span>
+                                    <span>{guestTrackResult.address?.city || 'India'} ({guestTrackResult.address?.pincode || 'PIN'})</span>
+                                </div>
+                                <div className="qc-guest-meta-item">
+                                    <span className="meta-label">Items:</span>
+                                    <span>{guestTrackResult.items?.length || 0} product(s)</span>
+                                </div>
+                                <div className="qc-guest-meta-item">
+                                    <span className="meta-label">Total Amount:</span>
+                                    <strong>₹{guestTrackResult.total} (via {(guestTrackResult.paymentMethod || 'COD').toUpperCase()})</strong>
+                                </div>
                             </div>
-                            <div className="qc-guest-meta-item">
-                                <span className="meta-label">Delivery Address:</span>
-                                <span>{guestTrackResult.address?.city || 'India'} ({guestTrackResult.address?.pincode || 'PIN'})</span>
-                            </div>
-                            <div className="qc-guest-meta-item">
-                                <span className="meta-label">Items:</span>
-                                <span>{guestTrackResult.items?.length || 0} product(s)</span>
-                            </div>
-                            <div className="qc-guest-meta-item">
-                                <span className="meta-label">Total Amount:</span>
-                                <strong>₹{guestTrackResult.total} (via {(guestTrackResult.paymentMethod || 'COD').toUpperCase()})</strong>
+
+                            <div className="qc-guest-actions-row">
+                                <button
+                                    className="qc-order-action-btn primary"
+                                    onClick={() => {
+                                        setActiveTrackingOrder(guestTrackResult);
+                                        setCurrentView('tracking');
+                                    }}
+                                >
+                                    <Truck size={14} /> <span>Open Full Tracking View</span>
+                                </button>
+                                <button
+                                    className="qc-order-action-btn secondary"
+                                    onClick={(e) => generateInvoiceForOrder(guestTrackResult, e)}
+                                    title="Download Tax Invoice as PDF"
+                                >
+                                    <Download size={14} /> <span>Download Invoice (PDF)</span>
+                                </button>
                             </div>
                         </div>
-
-                        <div className="qc-guest-actions-row">
-                            <button
-                                className="qc-order-action-btn primary"
-                                onClick={() => {
-                                    setActiveTrackingOrder(guestTrackResult);
-                                    setCurrentView('tracking');
-                                }}
-                            >
-                                <Truck size={14} /> <span>Open Full Tracking View</span>
-                            </button>
-                            <button
-                                className="qc-order-action-btn secondary"
-                                onClick={(e) => generateInvoiceForOrder(guestTrackResult, e)}
-                                title="Download Tax Invoice as PDF"
-                            >
-                                <Download size={14} /> <span>Download Invoice (PDF)</span>
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-        )}
-    </section>
+                    )}
+                </div>
+            )}
+        </section>
     );
 }
