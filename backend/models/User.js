@@ -33,7 +33,10 @@ const walletGrantSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   phone: String,
-  passwordHash: { type: String, required: true },
+  passwordHash: { type: String, required: false, default: "" },
+  googleId: { type: String, default: "" },
+  authProvider: { type: String, default: "local" }, // local, google
+  hasPassword: { type: Boolean, default: false },
   freeCash: { type: Number, default: 0 }, // Total active unexpired Free Cash
   walletGrants: [walletGrantSchema],
   addresses: [addressSchema],
