@@ -274,6 +274,8 @@ app.post("/api/register", async (req, res) => {
     email,
     phone,
     passwordHash: hash,
+    hasPassword: true,
+    authProvider: "local",
     freeCash: 150, // ₹150 welcome bonus!
     walletGrants: [
       {
@@ -301,16 +303,52 @@ app.post("/api/register", async (req, res) => {
       phone: user.phone || "",
       freeCash: user.freeCash,
       addresses: user.addresses || [],
-      savedPaymentMethods: user.savedPaymentMethods || []
+      savedPaymentMethods: user.savedPaymentMethods || [],
+      authProvider: user.authProvider || "local",
+      hasPassword: true
     }
   });
 });
 
 app.post("/api/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, turnstileToken } = req.body;
+
+  // Cloudflare Turnstile Verification
+  const cfSecret = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA";
+  if (cfSecret && cfSecret !== "skip" && cfSecret !== "disabled") {
+    if (!turnstileToken) {
+      return res.json({ ok: false, msg: "Please complete Cloudflare security verification 🛡️" });
+    }
+    try {
+      const cfParams = new URLSearchParams();
+      cfParams.append("secret", cfSecret);
+      cfParams.append("response", turnstileToken);
+      if (req.ip) cfParams.append("remoteip", req.ip);
+
+      const cfRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+        method: "POST",
+        body: cfParams,
+        headers: { "Content-Type": "application/x-www-form-urlencoded" }
+      });
+      const cfData = await cfRes.json();
+      if (!cfData.success) {
+        console.warn("Cloudflare Turnstile verification rejected:", cfData["error-codes"]);
+        return res.json({ ok: false, msg: "Cloudflare verification failed. Please try again 🛡️" });
+      }
+    } catch (cfErr) {
+      console.error("Cloudflare verification network error:", cfErr);
+    }
+  }
 
   const user = await User.findOne({ email });
   if (!user) return res.json({ ok: false, msg: "User not found" });
+
+  if (!user.passwordHash) {
+    return res.json({
+      ok: false,
+      msg: "This account was registered with Google. Please click 'Continue with Google' or set a password in your profile."
+    });
+  }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return res.json({ ok: false, msg: "Incorrect password" });
@@ -327,9 +365,98 @@ app.post("/api/login", async (req, res) => {
       phone: user.phone || "",
       freeCash: user.freeCash ?? 150,
       addresses: user.addresses || [],
-      savedPaymentMethods: user.savedPaymentMethods || []
+      savedPaymentMethods: user.savedPaymentMethods || [],
+      authProvider: user.authProvider || (user.googleId ? "google" : "local"),
+      hasPassword: Boolean(user.passwordHash && user.passwordHash.length > 0)
     }
   });
+});
+
+// Google OAuth Sign-in & Auto-registration
+app.post("/api/auth/google", async (req, res) => {
+  try {
+    const { credential, email: directEmail, name, googleId: directGoogleId } = req.body;
+    let email = directEmail;
+    let googleId = directGoogleId;
+
+    if (credential) {
+      try {
+        const parts = credential.split(".");
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf8"));
+          if (payload && payload.email) {
+            email = payload.email.toLowerCase();
+            googleId = payload.sub || googleId;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse Google JWT credential:", e);
+      }
+    }
+
+    if (!email) {
+      return res.status(400).json({ ok: false, msg: "Google authentication failed: Email missing" });
+    }
+
+    email = email.toLowerCase().trim();
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      const welcomeExpiry = new Date();
+      welcomeExpiry.setDate(welcomeExpiry.getDate() + 60);
+
+      user = await User.create({
+        email,
+        phone: "",
+        passwordHash: "",
+        googleId: googleId || "",
+        authProvider: "google",
+        hasPassword: false,
+        freeCash: 150,
+        walletGrants: [
+          {
+            id: "wgrant_welcome_" + Date.now().toString(36),
+            amount: 150,
+            originalAmount: 150,
+            reason: "₹150 Welcome Sign-up Bonus",
+            source: "welcome",
+            expiresAt: welcomeExpiry,
+            createdAt: new Date()
+          }
+        ],
+        addresses: [],
+        savedPaymentMethods: [
+          { id: "upi_def", type: "upi", details: (email.split("@")[0] || "user") + "@okaxis", isDefault: true }
+        ]
+      });
+    } else {
+      if (!user.googleId && googleId) {
+        user.googleId = googleId;
+      }
+      refreshUserWallet(user);
+      await user.save();
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+    res.cookie("token", token, { httpOnly: true, sameSite: "none", secure: true });
+
+    return res.json({
+      ok: true,
+      msg: "Signed in with Google successfully! 🎉",
+      user: {
+        email: user.email,
+        phone: user.phone || "",
+        freeCash: user.freeCash ?? 150,
+        addresses: user.addresses || [],
+        savedPaymentMethods: user.savedPaymentMethods || [],
+        authProvider: user.authProvider || "google",
+        hasPassword: Boolean(user.passwordHash && user.passwordHash.length > 0)
+      }
+    });
+  } catch (err) {
+    console.error("Google Auth Error:", err);
+    return res.status(500).json({ ok: false, msg: "Server error during Google authentication" });
+  }
 });
 
 app.post("/api/auth/logout", (req, res) => {
@@ -353,7 +480,9 @@ app.get("/api/me", requireAuth, async (req, res) => {
       phone: user.phone || "",
       freeCash: user.freeCash ?? 150,
       addresses: user.addresses || [],
-      savedPaymentMethods: user.savedPaymentMethods || []
+      savedPaymentMethods: user.savedPaymentMethods || [],
+      authProvider: user.authProvider || (user.googleId ? "google" : "local"),
+      hasPassword: Boolean(user.passwordHash && user.passwordHash.length > 0)
     }
   });
 });
@@ -365,6 +494,7 @@ app.post("/api/user/update", requireAuth, async (req, res) => {
     if (phone !== undefined) updateData.phone = phone;
     if (password) {
       updateData.passwordHash = await bcrypt.hash(password, 10);
+      updateData.hasPassword = true;
     }
     const user = await User.findByIdAndUpdate(req.user.id, updateData, { new: true });
     if (!user) return res.json({ ok: false, msg: "User not found" });
@@ -377,7 +507,9 @@ app.post("/api/user/update", requireAuth, async (req, res) => {
         phone: user.phone || "",
         freeCash: user.freeCash ?? 150,
         addresses: user.addresses || [],
-        savedPaymentMethods: user.savedPaymentMethods || []
+        savedPaymentMethods: user.savedPaymentMethods || [],
+        authProvider: user.authProvider || (user.googleId ? "google" : "local"),
+        hasPassword: Boolean(user.passwordHash && user.passwordHash.length > 0)
       }
     });
   } catch (error) {
