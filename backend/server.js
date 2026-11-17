@@ -314,26 +314,27 @@ app.post("/api/login", async (req, res) => {
   const { email, password, turnstileToken } = req.body;
 
   // Cloudflare Turnstile Verification
-  const cfSecret = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA";
+  const cfSecret = (process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA").trim();
   if (cfSecret && cfSecret !== "skip" && cfSecret !== "disabled") {
     if (!turnstileToken) {
       return res.json({ ok: false, msg: "Please complete Cloudflare security verification 🛡️" });
     }
     try {
-      const cfParams = new URLSearchParams();
-      cfParams.append("secret", cfSecret);
-      cfParams.append("response", turnstileToken);
-      if (req.ip) cfParams.append("remoteip", req.ip);
-
+      const cleanToken = String(turnstileToken).trim();
       const cfRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
         method: "POST",
-        body: cfParams,
-        headers: { "Content-Type": "application/x-www-form-urlencoded" }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: cfSecret,
+          response: cleanToken
+        })
       });
       const cfData = await cfRes.json();
       if (!cfData.success) {
-        console.warn("Cloudflare Turnstile verification rejected:", cfData["error-codes"]);
-        return res.json({ ok: false, msg: "Cloudflare verification failed. Please try again 🛡️" });
+        const errorCodes = cfData["error-codes"] || [];
+        console.warn("Cloudflare Turnstile verification rejected:", errorCodes);
+        const detail = errorCodes.length > 0 ? ` (${errorCodes.join(", ")})` : "";
+        return res.json({ ok: false, msg: `Cloudflare verification failed${detail}. Please try again 🛡️` });
       }
     } catch (cfErr) {
       console.error("Cloudflare verification network error:", cfErr);

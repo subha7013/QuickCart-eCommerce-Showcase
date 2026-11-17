@@ -318,15 +318,16 @@ export default function UserProfileView() {
     async function handleLogin(e) {
         if (e && e.preventDefault) e.preventDefault();
 
-        // Require Cloudflare Turnstile token
-        if (!turnstileToken) {
+        // Get live token from state or widget
+        const token = turnstileToken || (window.turnstile && turnstileWidgetIdRef.current ? window.turnstile.getResponse(turnstileWidgetIdRef.current) : '');
+        if (!token) {
             showToast('Please complete Cloudflare security verification 🛡️');
             return;
         }
 
         let res = await api('/api/login', {
             method: 'POST',
-            body: JSON.stringify({ ...loginForm, turnstileToken }),
+            body: JSON.stringify({ ...loginForm, turnstileToken: token }),
         });
         if (!res.ok && (res.msg === 'User not found' || loginForm.email === 'user@quickcart.com')) {
             // Auto register demo account so login never fails for fresh environments
