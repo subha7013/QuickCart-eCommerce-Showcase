@@ -41,16 +41,11 @@ const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow non-browser requests (Postman, curl, server-to-server) or matched origins
-    if (
-      !origin ||
-      allowedOrigins.includes(origin) ||
-      origin.endsWith(".netlify.app") ||
-      origin.endsWith(".vercel.app")
-    ) {
+    // Allow non-browser requests (Postman, curl, server-to-server) or exact whitelisted origins
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(null, false);
+      callback(new Error("CORS policy violation: Unauthorized origin"));
     }
   },
   credentials: true
@@ -124,12 +119,42 @@ mongoose.connect(process.env.MONGO_URI)
   })
   .catch(err => console.log("❌ MongoDB Error:", err));
 
-// -------------------- ADMIN AUTH MIDDLEWARE --------------------
+// -------------------- ADMIN AUTH MIDDLEWARE & RATE LIMITING --------------------
+const adminFailuresMap = new Map();
+
 function requireAdmin(req, res, next) {
-  const adminKey = req.headers["x-admin-key"];
-  if (!adminKey || adminKey !== process.env.ADMIN_SECRET) {
+  const clientIp = req.ip || req.connection?.remoteAddress || "ip_unknown";
+  const now = Date.now();
+  const failRecord = adminFailuresMap.get(clientIp);
+
+  if (failRecord && now < failRecord.resetAt && failRecord.count >= 5) {
+    const waitMins = Math.ceil((failRecord.resetAt - now) / 60000);
+    return res.status(429).json({
+      ok: false,
+      msg: `Too many failed admin authentication attempts. Locked for ${waitMins} minute(s).`
+    });
+  }
+
+  const adminKey = req.headers["x-admin-key"] || "";
+  const secret = process.env.ADMIN_SECRET || "";
+
+  let isValid = false;
+  if (adminKey && secret && typeof adminKey === "string") {
+    const keyBuf = Buffer.from(adminKey);
+    const secretBuf = Buffer.from(secret);
+    if (keyBuf.length === secretBuf.length) {
+      isValid = crypto.timingSafeEqual(keyBuf, secretBuf);
+    }
+  }
+
+  if (!isValid) {
+    const record = adminFailuresMap.get(clientIp) || { count: 0, resetAt: now + 15 * 60 * 1000 };
+    record.count += 1;
+    adminFailuresMap.set(clientIp, record);
     return res.status(403).json({ ok: false, msg: "Forbidden: invalid admin key" });
   }
+
+  adminFailuresMap.delete(clientIp);
   next();
 }
 
@@ -259,11 +284,56 @@ function revokeUserFreeCash(user, amountToRevoke, reason = "Admin Credit Revocat
   return actuallyRevoked;
 }
 
-// -------------------- AUTH ROUTES --------------------
-app.post("/api/register", async (req, res) => {
-  const { email, phone, password } = req.body;
+// -------------------- AUTH ROUTES & VERIFICATION --------------------
+const registrationRateMap = new Map();
 
-  const exists = await User.findOne({ email });
+app.post("/api/register", async (req, res) => {
+  const { email, phone, password, turnstileToken } = req.body;
+
+  // 1. IP Registration Rate Limiting (max 5 new registrations per hour per IP)
+  const clientIp = req.ip || req.connection?.remoteAddress || "reg_ip_unknown";
+  const now = Date.now();
+  const regRecord = registrationRateMap.get(clientIp);
+  if (regRecord && now < regRecord.resetAt && regRecord.count >= 5) {
+    const waitMins = Math.ceil((regRecord.resetAt - now) / 60000);
+    return res.status(429).json({
+      ok: false,
+      msg: `Too many registration attempts from this device. Please try again in ${waitMins} minute(s).`
+    });
+  }
+
+  // 2. Cloudflare Turnstile Verification on Registration
+  const cfSecret = (process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA").trim();
+  if (cfSecret && cfSecret !== "skip" && cfSecret !== "disabled") {
+    if (!turnstileToken) {
+      return res.json({ ok: false, msg: "Please complete Cloudflare security verification 🛡️" });
+    }
+    try {
+      const cleanToken = String(turnstileToken).trim();
+      const cfRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: cfSecret,
+          response: cleanToken
+        })
+      });
+      const cfData = await cfRes.json();
+      if (!cfData.success) {
+        return res.json({ ok: false, msg: "Cloudflare verification failed. Please try again 🛡️" });
+      }
+    } catch (cfErr) {
+      console.error("Cloudflare registration verification network error:", cfErr);
+      return res.json({ ok: false, msg: "Cloudflare verification error. Please try again 🛡️" });
+    }
+  }
+
+  if (!email || !password || typeof email !== "string" || typeof password !== "string") {
+    return res.status(400).json({ ok: false, msg: "Valid email and password are required" });
+  }
+
+  const cleanEmail = email.toLowerCase().trim();
+  const exists = await User.findOne({ email: cleanEmail });
   if (exists) return res.json({ ok: false, msg: "Email already registered" });
 
   const hash = await bcrypt.hash(password, 10);
@@ -271,8 +341,8 @@ app.post("/api/register", async (req, res) => {
   welcomeExpiry.setDate(welcomeExpiry.getDate() + 60);
 
   const user = await User.create({
-    email,
-    phone,
+    email: cleanEmail,
+    phone: phone || "",
     passwordHash: hash,
     hasPassword: true,
     authProvider: "local",
@@ -290,12 +360,23 @@ app.post("/api/register", async (req, res) => {
     ],
     addresses: [],
     savedPaymentMethods: [
-      { id: "upi_def", type: "upi", details: (email.split("@")[0] || "user") + "@okaxis", isDefault: true }
+      { id: "upi_def", type: "upi", details: (cleanEmail.split("@")[0] || "user") + "@okaxis", isDefault: true }
     ]
   });
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-  res.cookie("token", token, { httpOnly: true, sameSite: "none", secure: true });
+  // Track successful registration in IP rate limiter
+  const record = registrationRateMap.get(clientIp) || { count: 0, resetAt: now + 60 * 60 * 1000 };
+  record.count += 1;
+  registrationRateMap.set(clientIp, record);
+
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  res.cookie("token", token, {
+    httpOnly: true,
+    sameSite: "none",
+    secure: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+
   res.json({
     ok: true,
     user: {
@@ -314,26 +395,27 @@ app.post("/api/login", async (req, res) => {
   const { email, password, turnstileToken } = req.body;
 
   // Cloudflare Turnstile Verification
-  const cfSecret = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA";
+  const cfSecret = (process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA").trim();
   if (cfSecret && cfSecret !== "skip" && cfSecret !== "disabled") {
     if (!turnstileToken) {
       return res.json({ ok: false, msg: "Please complete Cloudflare security verification 🛡️" });
     }
     try {
-      const cfParams = new URLSearchParams();
-      cfParams.append("secret", cfSecret);
-      cfParams.append("response", turnstileToken);
-      if (req.ip) cfParams.append("remoteip", req.ip);
-
+      const cleanToken = String(turnstileToken).trim();
       const cfRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
         method: "POST",
-        body: cfParams,
-        headers: { "Content-Type": "application/x-www-form-urlencoded" }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: cfSecret,
+          response: cleanToken
+        })
       });
       const cfData = await cfRes.json();
       if (!cfData.success) {
-        console.warn("Cloudflare Turnstile verification rejected:", cfData["error-codes"]);
-        return res.json({ ok: false, msg: "Cloudflare verification failed. Please try again 🛡️" });
+        const errorCodes = cfData["error-codes"] || [];
+        console.warn("Cloudflare Turnstile verification rejected:", errorCodes);
+        const detail = errorCodes.length > 0 ? ` (${errorCodes.join(", ")})` : "";
+        return res.json({ ok: false, msg: `Cloudflare verification failed${detail}. Please try again 🛡️` });
       }
     } catch (cfErr) {
       console.error("Cloudflare verification network error:", cfErr);
@@ -341,7 +423,12 @@ app.post("/api/login", async (req, res) => {
     }
   }
 
-  const user = await User.findOne({ email });
+  if (!email || !password) {
+    return res.status(400).json({ ok: false, msg: "Email and password are required" });
+  }
+
+  const cleanEmail = String(email).toLowerCase().trim();
+  const user = await User.findOne({ email: cleanEmail });
   if (!user) return res.json({ ok: false, msg: "User not found" });
 
   if (!user.passwordHash) {
@@ -357,8 +444,14 @@ app.post("/api/login", async (req, res) => {
   refreshUserWallet(user);
   await user.save();
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-  res.cookie("token", token, { httpOnly: true, sameSite: "none", secure: true });
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  res.cookie("token", token, {
+    httpOnly: true,
+    sameSite: "none",
+    secure: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+
   res.json({
     ok: true,
     user: {
@@ -461,8 +554,13 @@ app.post("/api/auth/google", async (req, res) => {
       await user.save();
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-    res.cookie("token", token, { httpOnly: true, sameSite: "none", secure: true });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "none",
+      secure: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
 
     return res.json({
       ok: true,
@@ -593,9 +691,23 @@ app.delete("/api/user/address/:id", requireAuth, async (req, res) => {
   }
 });
 
-// -------------------- GIFT CARD / FREE CASH (SECURE REDEMPTION) --------------------
+// -------------------- GIFT CARD / FREE CASH (SECURE REDEMPTION & BRUTE FORCE SHIELD) --------------------
+const voucherAttemptsMap = new Map();
+
 app.post("/api/user/redeem-giftcard", requireAuth, async (req, res) => {
   try {
+    const userKey = req.user.id;
+    const now = Date.now();
+    const failRecord = voucherAttemptsMap.get(userKey);
+
+    if (failRecord && now < failRecord.resetAt && failRecord.count >= 5) {
+      const waitMins = Math.ceil((failRecord.resetAt - now) / 60000);
+      return res.status(429).json({
+        ok: false,
+        msg: `Too many failed voucher attempts. Please wait ${waitMins} minute(s) before trying again.`
+      });
+    }
+
     const { code } = req.body;
     if (!code || typeof code !== "string" || !code.trim()) {
       return res.status(400).json({ ok: false, msg: "Please enter a valid gift card or voucher code." });
@@ -606,6 +718,9 @@ app.post("/api/user/redeem-giftcard", requireAuth, async (req, res) => {
     // 1. Verify gift card exists in database
     const card = await GiftCard.findOne({ code: trimmed });
     if (!card) {
+      const record = voucherAttemptsMap.get(userKey) || { count: 0, resetAt: now + 15 * 60 * 1000 };
+      record.count += 1;
+      voucherAttemptsMap.set(userKey, record);
       return res.status(404).json({
         ok: false,
         msg: `Gift card code "${trimmed}" is invalid or does not exist.`
@@ -685,6 +800,8 @@ app.post("/api/user/redeem-giftcard", requireAuth, async (req, res) => {
       card.isActive = false;
     }
     await card.save();
+
+    voucherAttemptsMap.delete(userKey);
 
     res.json({
       ok: true,
@@ -1147,91 +1264,84 @@ app.delete("/api/admin/products/:id", requireAdmin, async (req, res) => {
   }
 });
 
-// -------------------- ORDERS --------------------
+// -------------------- ORDERS & SECURE CHECKOUT --------------------
 app.get("/api/orders", requireAuth, async (req, res) => {
   const orders = await Order.find({ userId: req.user.id }).sort({ createdAt: -1 });
   res.json({ ok: true, orders });
 });
 
-app.post("/api/checkout", requireAuth, async (req, res) => {
-  const {
-    items,
-    subtotal,
-    paymentMethod,
-    paymentId,
-    upiId,
-    couponCode,
-    couponDiscount,
-    freeCashUsed,
-    address
-  } = req.body;
-
-  if (!items || items.length === 0) {
-    return res.json({ ok: false, msg: "Cart is empty" });
+// Helper: Calculate verified order totals strictly from database to prevent price tampering
+async function calculateVerifiedOrderTotals({ items, couponCode, freeCashUsed, userId }) {
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return { ok: false, msg: "Cart is empty" };
   }
 
-  if (!address || typeof address !== 'object' || !address.name?.trim() || !address.line1?.trim() || !address.city?.trim() || !address.pincode?.trim()) {
-    return res.json({ ok: false, msg: "Complete delivery address is required. Please select or add an address." });
-  }
-
-  const user = await User.findById(req.user.id);
-  if (!user) return res.json({ ok: false, msg: "User account not found" });
-
-  // If user has no saved addresses in account and no valid address was supplied
-  if ((!user.addresses || user.addresses.length === 0) && (!address.line1 || !address.city || !address.pincode)) {
-    return res.json({ ok: false, msg: "No delivery address on file. Please add a delivery address to complete your order." });
-  }
-
-  // Stock Validation
   const productIds = items.map(item => item.id).filter(Boolean);
   const dbProducts = await Product.find({ id: { $in: productIds } }).lean();
-  const stockMap = {};
-  for (const p of dbProducts) {
-    stockMap[p.id] = p.stock;
-  }
+
+  let orderSubtotal = 0;
+  const verifiedItems = [];
 
   for (const item of items) {
-    const dbProduct = item.id ? dbProducts.find(p => p.id === item.id) : null;
-    const limitPerOrder = Number(dbProduct?.limitPerOrder || item.limitPerOrder || 0);
-    if (limitPerOrder > 0 && Number(item.qty) > limitPerOrder) {
-      return res.json({ ok: false, msg: `"${item.name}" is limited to 1 unit per order` });
+    if (!item.id) {
+      return { ok: false, msg: "Invalid item in cart: missing product ID" };
     }
-    if (!item.id) continue;
-    const availableStock = stockMap[item.id];
-    if (availableStock === undefined) continue;
-    if (availableStock === 0) {
-      return res.json({ ok: false, msg: `"${item.name}" is out of stock` });
+    const dbProduct = dbProducts.find(p => p.id === item.id);
+    if (!dbProduct) {
+      return { ok: false, msg: `Product "${item.name || item.id}" was not found in catalog` };
     }
-    if (item.qty > availableStock) {
-      return res.json({ ok: false, msg: `Only ${availableStock} unit(s) of "${item.name}" are available` });
+
+    const qty = Math.max(1, parseInt(item.qty, 10) || 1);
+    const limitPerOrder = Number(dbProduct.limitPerOrder || 0);
+    if (limitPerOrder > 0 && qty > limitPerOrder) {
+      return { ok: false, msg: `"${dbProduct.name}" is limited to ${limitPerOrder} unit(s) per order` };
     }
+
+    if (dbProduct.stock <= 0) {
+      return { ok: false, msg: `"${dbProduct.name}" is out of stock` };
+    }
+    if (qty > dbProduct.stock) {
+      return { ok: false, msg: `Only ${dbProduct.stock} unit(s) of "${dbProduct.name}" are available in stock` };
+    }
+
+    // Force real price from DB! Client-sent prices are completely ignored
+    const realPrice = Number(dbProduct.price);
+    orderSubtotal += realPrice * qty;
+
+    verifiedItems.push({
+      id: dbProduct.id,
+      name: dbProduct.name,
+      price: realPrice,
+      qty,
+      image: dbProduct.image || item.image || "",
+      category: dbProduct.category || ""
+    });
   }
 
-  // Coupon Validation
-  const orderSubtotal = Number(subtotal) || items.reduce((sum, item) => sum + (item.price || 0) * (item.qty || 0), 0);
-  const normalizedCoupon = couponCode ? String(couponCode).trim().toUpperCase() : '';
+  // Coupon Verification against Database
+  const normalizedCoupon = couponCode ? String(couponCode).trim().toUpperCase() : "";
   let expectedDiscount = 0;
   let activeCoupon = null;
 
   if (normalizedCoupon) {
     activeCoupon = await Coupon.findOne({ code: normalizedCoupon, isActive: true });
-    if (!activeCoupon) return res.json({ ok: false, msg: "Invalid coupon code" });
-    if (new Date() > new Date(activeCoupon.validUpto)) return res.json({ ok: false, msg: "Coupon expired" });
+    if (!activeCoupon) return { ok: false, msg: "Invalid coupon code" };
+    if (new Date() > new Date(activeCoupon.validUpto)) return { ok: false, msg: "Coupon expired" };
 
     if (activeCoupon.isFirstOrderOnly) {
-      const orderCount = await Order.countDocuments({ userId: req.user.id });
-      if (orderCount > 0) return res.json({ ok: false, msg: "Valid for first order only" });
+      const orderCount = await Order.countDocuments({ userId });
+      if (orderCount > 0) return { ok: false, msg: "Valid for first order only" };
     }
 
     if (activeCoupon.maxUsesPerUser > 0) {
-      const usage = activeCoupon.usedBy.find(u => u.userId.toString() === req.user.id);
+      const usage = (activeCoupon.usedBy || []).find(u => u.userId.toString() === userId.toString());
       if (usage && usage.count >= activeCoupon.maxUsesPerUser) {
-        return res.json({ ok: false, msg: "Usage limit reached for this coupon" });
+        return { ok: false, msg: "Usage limit reached for this coupon" };
       }
     }
 
     if (orderSubtotal < activeCoupon.minOrderVal) {
-      return res.json({ ok: false, msg: `Minimum order value is ₹${activeCoupon.minOrderVal}` });
+      return { ok: false, msg: `Minimum order value for coupon "${normalizedCoupon}" is ₹${activeCoupon.minOrderVal}` };
     }
 
     expectedDiscount = (orderSubtotal * activeCoupon.discount) / 100;
@@ -1241,31 +1351,75 @@ app.post("/api/checkout", requireAuth, async (req, res) => {
     expectedDiscount = Number(expectedDiscount.toFixed(2));
   }
 
-  // Delivery Fee Calculation
-  function calculateDeliveryFee(subtotal) {
-    if (subtotal >= 199) return 0;
-    if (subtotal >= 100) return 20;
-    return 40;
+  // Delivery Fee Calculation (standard tier: Free above ₹199, ₹20 above ₹100, else ₹40)
+  const deliveryFee = orderSubtotal >= 199 ? 0 : orderSubtotal >= 100 ? 20 : 40;
+
+  // Free Cash Verification against Database Record
+  const user = await User.findById(userId);
+  const userFreeCash = Math.max(0, Number(user?.freeCash || 0));
+  const maxApplicable = Math.max(0, orderSubtotal - expectedDiscount + deliveryFee);
+  const requestedFreeCash = Math.max(0, Number(freeCashUsed || 0));
+  const freeCashToApply = Math.min(requestedFreeCash, userFreeCash, maxApplicable);
+
+  const orderTotal = Math.max(0, Number((orderSubtotal - expectedDiscount + deliveryFee - freeCashToApply).toFixed(2)));
+
+  return {
+    ok: true,
+    user,
+    verifiedItems,
+    orderSubtotal,
+    deliveryFee,
+    expectedDiscount,
+    activeCoupon,
+    normalizedCoupon,
+    freeCashToApply,
+    orderTotal
+  };
+}
+
+app.post("/api/checkout", requireAuth, async (req, res) => {
+  const {
+    items,
+    paymentMethod,
+    paymentId,
+    upiId,
+    couponCode,
+    freeCashUsed,
+    address
+  } = req.body;
+
+  if (!address || typeof address !== 'object' || !address.name?.trim() || !address.line1?.trim() || !address.city?.trim() || !address.pincode?.trim()) {
+    return res.json({ ok: false, msg: "Complete delivery address is required. Please select or add an address." });
   }
 
-  const deliveryFee = calculateDeliveryFee(orderSubtotal);
+  const verified = await calculateVerifiedOrderTotals({
+    items,
+    couponCode,
+    freeCashUsed,
+    userId: req.user.id
+  });
 
-  // Free Cash Validation & Deduction
-  const userFreeCash = Number(user?.freeCash || 0);
-  const freeCashToApply = Math.min(Number(freeCashUsed || 0), userFreeCash);
+  if (!verified.ok) {
+    return res.json({ ok: false, msg: verified.msg });
+  }
 
-  const orderTotal = Math.max(
-    0,
-    orderSubtotal - expectedDiscount + deliveryFee - freeCashToApply
-  );
+  const {
+    user,
+    verifiedItems,
+    orderSubtotal,
+    deliveryFee,
+    expectedDiscount,
+    activeCoupon,
+    normalizedCoupon,
+    freeCashToApply,
+    orderTotal
+  } = verified;
 
-  // Generate Tracking ID & Estimated Delivery
   const trackingId = "QC-TRK-" + Math.floor(100000 + Math.random() * 900000);
-  const estimatedDelivery = "Today in 12-15 Mins";
 
   const order = await Order.create({
     userId: req.user.id,
-    items,
+    items: verifiedItems,
     subtotal: orderSubtotal,
     deliveryFee,
     total: orderTotal,
@@ -1276,20 +1430,18 @@ app.post("/api/checkout", requireAuth, async (req, res) => {
     paymentId: paymentId || ("pay_sim_" + Date.now().toString(36)),
     upiId: paymentMethod === "upi" ? (upiId || "") : "",
     trackingId,
-    estimatedDelivery,
+    estimatedDelivery: "Today in 12-15 Mins",
     address,
     status: "placed"
   });
 
-  // Deduct Free Cash from user balance and wallet grants
   if (freeCashToApply > 0 && user) {
     deductUserFreeCash(user, freeCashToApply);
     await user.save();
   }
 
-  // Record coupon usage
   if (activeCoupon) {
-    const usageIndex = activeCoupon.usedBy.findIndex(u => u.userId.toString() === req.user.id);
+    const usageIndex = (activeCoupon.usedBy || []).findIndex(u => u.userId.toString() === req.user.id);
     if (usageIndex > -1) {
       activeCoupon.usedBy[usageIndex].count += 1;
     } else {
@@ -1298,9 +1450,7 @@ app.post("/api/checkout", requireAuth, async (req, res) => {
     await activeCoupon.save();
   }
 
-  // Decrement Stock
-  for (const item of items) {
-    if (!item.id || stockMap[item.id] === undefined) continue;
+  for (const item of verifiedItems) {
     await Product.findOneAndUpdate(
       { id: item.id, stock: { $gte: item.qty } },
       { $inc: { stock: -item.qty } }
@@ -1315,9 +1465,25 @@ app.post("/api/checkout", requireAuth, async (req, res) => {
 // 1. Create Razorpay Order
 app.post("/api/razorpay/create-order", requireAuth, async (req, res) => {
   try {
-    const { amount } = req.body;
-    const numAmount = Number(amount);
-    if (!numAmount || numAmount <= 0) {
+    const { items, couponCode, freeCashUsed, amount: directAmount } = req.body;
+    let payableAmount = 0;
+
+    if (items && Array.isArray(items) && items.length > 0) {
+      const verified = await calculateVerifiedOrderTotals({
+        items,
+        couponCode,
+        freeCashUsed,
+        userId: req.user.id
+      });
+      if (!verified.ok) {
+        return res.status(400).json({ ok: false, msg: verified.msg });
+      }
+      payableAmount = verified.orderTotal;
+    } else {
+      payableAmount = Number(directAmount);
+    }
+
+    if (!payableAmount || payableAmount <= 0) {
       return res.status(400).json({ ok: false, msg: "Invalid payable order amount" });
     }
 
@@ -1335,11 +1501,12 @@ app.post("/api/razorpay/create-order", requireAuth, async (req, res) => {
 
     // Amount in paise (1 INR = 100 paise)
     const options = {
-      amount: Math.round(numAmount * 100),
+      amount: Math.round(payableAmount * 100),
       currency: "INR",
       receipt: "rcpt_" + Date.now().toString(36),
       notes: {
-        userId: req.user.id
+        userId: req.user.id,
+        verifiedAmount: String(payableAmount)
       }
     };
 
@@ -1366,9 +1533,7 @@ app.post("/api/razorpay/verify-payment", requireAuth, async (req, res) => {
       razorpay_payment_id,
       razorpay_signature,
       items,
-      subtotal,
       couponCode,
-      couponDiscount,
       freeCashUsed,
       address
     } = req.body;
@@ -1378,6 +1543,7 @@ app.post("/api/razorpay/verify-payment", requireAuth, async (req, res) => {
     }
 
     const key_secret = process.env.RAZORPAY_KEY_SECRET;
+    const key_id = process.env.RAZORPAY_KEY_ID;
     if (!key_secret) {
       return res.status(500).json({ ok: false, msg: "Server Razorpay secret is not configured" });
     }
@@ -1394,31 +1560,56 @@ app.post("/api/razorpay/verify-payment", requireAuth, async (req, res) => {
       return res.status(400).json({ ok: false, msg: "Razorpay payment verification failed: Invalid signature" });
     }
 
-    // Stock & Cart Validation
-    if (!items || items.length === 0) {
-      return res.status(400).json({ ok: false, msg: "Cart is empty" });
+    // Recalculate true database totals
+    const verified = await calculateVerifiedOrderTotals({
+      items,
+      couponCode,
+      freeCashUsed,
+      userId: req.user.id
+    });
+
+    if (!verified.ok) {
+      return res.status(400).json({ ok: false, msg: verified.msg });
     }
 
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ ok: false, msg: "User account not found" });
+    const {
+      user,
+      verifiedItems,
+      orderSubtotal,
+      deliveryFee,
+      expectedDiscount,
+      activeCoupon,
+      normalizedCoupon,
+      freeCashToApply,
+      orderTotal
+    } = verified;
 
-    const orderSubtotal = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 1), 0);
-    const expectedDiscount = Number(couponDiscount) || 0;
-    const deliveryFee = orderSubtotal >= 199 ? 0 : orderSubtotal >= 100 ? 20 : 40;
+    // Verify that the remote Razorpay order was created for the exact calculated order total
+    if (key_id && key_secret && !razorpay_order_id.startsWith("order_sim_")) {
+      try {
+        const razorpay = new Razorpay({ key_id, key_secret });
+        const rzpOrder = await razorpay.orders.fetch(razorpay_order_id);
+        const expectedPaise = Math.round(orderTotal * 100);
+        if (rzpOrder && Math.abs(rzpOrder.amount - expectedPaise) > 100) { // allow max ₹1 rounding
+          return res.status(400).json({
+            ok: false,
+            msg: `Payment verification failed: Amount mismatch (Paid: ₹${(rzpOrder.amount / 100).toFixed(2)}, Expected: ₹${orderTotal.toFixed(2)})`
+          });
+        }
+      } catch (rzpErr) {
+        console.warn("Could not fetch remote Razorpay order for amount cross-check:", rzpErr.message);
+      }
+    }
 
-    const userFreeCash = Number(user.freeCash || 0);
-    const freeCashToApply = Math.min(Number(freeCashUsed || 0), userFreeCash);
-
-    const orderTotal = Math.max(0, orderSubtotal - expectedDiscount + deliveryFee - freeCashToApply);
     const trackingId = "QC-TRK-" + Math.floor(100000 + Math.random() * 900000);
 
     const order = await Order.create({
       userId: req.user.id,
-      items,
+      items: verifiedItems,
       subtotal: orderSubtotal,
       deliveryFee,
       total: orderTotal,
-      couponCode: couponCode || "",
+      couponCode: normalizedCoupon,
       couponDiscount: expectedDiscount,
       freeCashUsed: freeCashToApply,
       paymentMethod: "razorpay",
@@ -1429,12 +1620,22 @@ app.post("/api/razorpay/verify-payment", requireAuth, async (req, res) => {
       status: "placed"
     });
 
-    if (freeCashToApply > 0) {
+    if (freeCashToApply > 0 && user) {
       deductUserFreeCash(user, freeCashToApply);
       await user.save();
     }
 
-    for (const item of items) {
+    if (activeCoupon) {
+      const usageIndex = (activeCoupon.usedBy || []).findIndex(u => u.userId.toString() === req.user.id);
+      if (usageIndex > -1) {
+        activeCoupon.usedBy[usageIndex].count += 1;
+      } else {
+        activeCoupon.usedBy.push({ userId: req.user.id, count: 1 });
+      }
+      await activeCoupon.save();
+    }
+
+    for (const item of verifiedItems) {
       if (!item.id) continue;
       await Product.findOneAndUpdate(
         { id: item.id, stock: { $gte: item.qty } },
@@ -1446,12 +1647,12 @@ app.post("/api/razorpay/verify-payment", requireAuth, async (req, res) => {
       ok: true,
       order,
       trackingId,
-      freeCash: user.freeCash,
+      freeCash: user ? user.freeCash : 0,
       msg: "Payment verified & Order placed successfully! 🎉"
     });
   } catch (error) {
     console.error("Razorpay payment verification error:", error);
-    res.status(500).json({ ok: false, msg: "Failed to verify Razorpay payment" });
+    res.status(500).json({ ok: false, msg: "Failed to verify Razorpay payment: " + (error.message || "Server error") });
   }
 });
 
@@ -1693,12 +1894,12 @@ app.delete("/api/admin/themes/:id", requireAdmin, async (req, res) => {
   }
 });
 
-// -------------------- PUBLIC ORDER TRACKING (NO LOGIN REQUIRED) --------------------
+// -------------------- PUBLIC ORDER TRACKING (PRIVACY SAFEGUARDED) --------------------
 app.get("/api/orders/track/:query", async (req, res) => {
   try {
     const rawQuery = (req.params.query || "").trim();
-    if (!rawQuery) {
-      return res.json({ ok: false, msg: "Please provide a valid Order ID or Tracking ID" });
+    if (!rawQuery || rawQuery.length < 6) {
+      return res.json({ ok: false, msg: "Please provide a valid full Order ID or Tracking ID (min 6 characters)" });
     }
 
     let order = null;
@@ -1727,31 +1928,57 @@ app.get("/api/orders/track/:query", async (req, res) => {
         .lean();
     }
 
-    // 4. Try suffix match if user entered just numbers or last few chars
-    if (!order && rawQuery.length >= 4) {
-      const recentOrders = await Order.find({})
-        .select("-__v")
-        .populate("userId", "email phone")
-        .sort({ createdAt: -1 })
-        .limit(200)
-        .lean();
-
-      order = recentOrders.find(o => {
-        const idStr = o._id.toString();
-        const trkStr = (o.trackingId || "").toUpperCase();
-        const qUpper = rawQuery.toUpperCase();
-        return idStr.endsWith(rawQuery) || trkStr === qUpper || trkStr.endsWith(qUpper) || (o.paymentId && o.paymentId === rawQuery);
-      });
-    }
-
     if (!order) {
       return res.json({ ok: false, msg: "No order found matching this Tracking ID or Order ID." });
     }
 
+    // Mask sensitive customer PII to protect privacy
+    function maskCustomerName(name) {
+      if (!name || typeof name !== "string") return "Customer";
+      return name
+        .split(" ")
+        .map(w => w.length > 1 ? w[0] + "*".repeat(Math.min(3, w.length - 1)) : w)
+        .join(" ");
+    }
+
+    function maskPhone(phone) {
+      if (!phone || typeof phone !== "string") return "";
+      const digits = phone.replace(/\D/g, "");
+      if (digits.length >= 10) {
+        return "+91 ******" + digits.slice(-4);
+      }
+      return "******" + phone.slice(-4);
+    }
+
+    const maskedAddress = order.address ? {
+      name: maskCustomerName(order.address.name),
+      phone: maskPhone(order.address.phone),
+      city: order.address.city || "",
+      state: order.address.state || "",
+      pincode: order.address.pincode || ""
+    } : null;
+
     const sanitizedOrder = {
-      ...order,
+      _id: order._id,
       trackingId: order.trackingId || ('QC-TRK-' + order._id.toString().slice(-6)),
-      customerName: order.address?.name || order.userId?.email?.split('@')[0] || 'Customer'
+      customerName: maskCustomerName(order.address?.name || order.userId?.email?.split('@')[0] || 'Customer'),
+      status: order.status || "placed",
+      estimatedDelivery: order.estimatedDelivery || "Today in 12-15 Mins",
+      createdAt: order.createdAt,
+      items: (order.items || []).map(i => ({
+        id: i.id,
+        name: i.name,
+        price: i.price,
+        qty: i.qty,
+        image: i.image
+      })),
+      subtotal: order.subtotal,
+      deliveryFee: order.deliveryFee,
+      couponDiscount: order.couponDiscount,
+      freeCashUsed: order.freeCashUsed,
+      total: order.total,
+      paymentMethod: order.paymentMethod,
+      address: maskedAddress
     };
 
     res.json({ ok: true, order: sanitizedOrder });
