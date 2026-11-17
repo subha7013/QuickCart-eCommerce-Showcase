@@ -4569,10 +4569,20 @@ body {
     border: 1px solid var(--qc-border);
     overflow: hidden;
     box-shadow: var(--qc-shadow-sm);
+    width: 100%;
+    max-width: 100%;
+}
+
+.qc-table-responsive {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .qc-data-table {
     width: 100%;
+    min-width: 620px;
     border-collapse: collapse;
     text-align: left;
     font-size: 13px;
@@ -4784,10 +4794,134 @@ body {
     border-color: #ef4444;
 }
 
+/* Admin Incidents Grid */
+.qc-admin-incidents-header {
+    margin-bottom: 16px;
+}
+
+.qc-admin-incidents-header h3 {
+    font-size: 18px;
+    font-weight: 800;
+    margin: 0 0 4px;
+}
+
+.qc-admin-incidents-header p {
+    font-size: 13px;
+    color: var(--qc-text-muted);
+    margin: 0;
+}
+
+.qc-admin-incidents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.qc-admin-incident-card {
+    background: #ffffff;
+    border: 1px solid var(--qc-border);
+    border-radius: var(--qc-radius-lg);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: var(--qc-shadow-sm);
+}
+
+.qc-incident-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.qc-incident-id-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-weight: 800;
+    font-size: 13px;
+}
+
+.qc-incident-subject {
+    margin: 0;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--qc-text-main);
+}
+
+.qc-incident-user {
+    font-size: 12px;
+    color: var(--qc-text-muted);
+    margin: 0;
+}
+
+.qc-incident-chat-preview {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+}
+
+.qc-transcript-scroll {
+    max-height: 120px;
+    overflow-y: auto;
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.qc-transcript-msg {
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 11.5px;
+}
+
+.qc-transcript-msg.user {
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.qc-transcript-msg.bot {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.qc-incident-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px dashed var(--qc-border-light);
+}
+
+/* Admin Gift Cards & Coupons Base Layouts */
+.qc-giftcards-admin-layout {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 24px;
+    align-items: start;
+    margin-top: 20px;
+}
+
+.qc-coupons-admin-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+    margin-top: 20px;
+}
+
 /* Admin Themes Grid */
 .qc-themes-card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
     gap: 20px;
     margin-top: 16px;
 }
@@ -5839,6 +5973,402 @@ a,
 
     .qc-step-line {
         width: 16px !important;
+    }
+
+    /* Admin Center Responsive Overrides */
+    .qc-admin-dashboard-section,
+    .qc-admin-login-section {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+
+    .qc-admin-login-card {
+        padding: 24px 16px !important;
+        margin: 24px auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .qc-admin-header-card {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 14px !important;
+        padding: 16px 14px !important;
+        box-sizing: border-box !important;
+    }
+
+    .qc-admin-header-left {
+        gap: 12px !important;
+    }
+
+    .qc-admin-header-left h2 {
+        font-size: 16.5px !important;
+        line-height: 1.25 !important;
+    }
+
+    .qc-admin-header-right {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        gap: 8px !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        padding-top: 12px !important;
+    }
+
+    .qc-admin-theme-tag {
+        font-size: 12px !important;
+    }
+
+    .qc-admin-logout-btn {
+        padding: 6px 12px !important;
+        font-size: 12px !important;
+    }
+
+    .qc-admin-tabs-row {
+        gap: 6px !important;
+        padding: 4px 2px 8px !important;
+        margin-bottom: 16px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .qc-admin-tab {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+        border-radius: var(--qc-radius-full) !important;
+    }
+
+    /* Products Tab */
+    .qc-admin-action-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+
+    .qc-admin-search-box {
+        max-width: 100% !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .qc-admin-action-bar .qc-cta-button {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    /* Orders Tab */
+    .qc-orders-filter-bar {
+        gap: 6px !important;
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+        padding-bottom: 6px !important;
+        scrollbar-width: none !important;
+        -webkit-overflow-scrolling: touch !important;
+        box-sizing: border-box !important;
+    }
+
+    .qc-order-filter-pill {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+    }
+
+    .qc-admin-order-card {
+        padding: 14px 12px !important;
+        box-sizing: border-box !important;
+    }
+
+    .qc-admin-order-top {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+
+    .qc-admin-order-id-block {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 4px !important;
+        width: 100% !important;
+    }
+
+    .qc-admin-order-price-block {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        border-top: 1px dashed var(--qc-border-light) !important;
+        padding-top: 8px !important;
+    }
+
+    .qc-status-btn-group {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        width: 100% !important;
+        gap: 6px !important;
+    }
+
+    .qc-status-step-btn {
+        width: 100% !important;
+        text-align: center !important;
+        justify-content: center !important;
+        font-size: 11.5px !important;
+        padding: 7px 4px !important;
+    }
+
+    .qc-admin-order-refund-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    .qc-admin-order-refund-row .qc-table-actions-cell {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        width: 100% !important;
+        gap: 6px !important;
+    }
+
+    .qc-admin-order-refund-row .qc-table-actions-cell button {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    /* Customers Tab & 360 */
+    .qc-customer-admin-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+    }
+
+    .qc-customer-toolbar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        width: 100% !important;
+    }
+
+    .qc-customer-filter-pills {
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+        padding-bottom: 6px !important;
+        scrollbar-width: none !important;
+        -webkit-overflow-scrolling: touch !important;
+        box-sizing: border-box !important;
+    }
+
+    .qc-filter-pill-btn {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+    }
+
+    .qc-customer-cards-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .qc-customer-profile-hero {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        padding: 16px 14px !important;
+        gap: 14px !important;
+        box-sizing: border-box !important;
+    }
+
+    .qc-customer-profile-hero .qc-profile-hero-left {
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 12px !important;
+        width: 100% !important;
+    }
+
+    .qc-customer-profile-hero .qc-profile-title-row {
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+    }
+
+    .qc-customer-profile-hero .qc-profile-title-row h4 {
+        word-break: break-all !important;
+        font-size: 15.5px !important;
+    }
+
+    .qc-customer-profile-hero .qc-profile-hero-stats {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        width: 100% !important;
+        gap: 8px !important;
+    }
+
+    .qc-hero-stat-card {
+        min-width: 0 !important;
+        padding: 10px 12px !important;
+        box-sizing: border-box !important;
+    }
+
+    .qc-profile-hero-actions {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 8px !important;
+    }
+
+    .qc-profile-hero-actions button {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .qc-topup-form-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        gap: 10px !important;
+    }
+
+    .qc-topup-form-row .qc-form-group {
+        width: 100% !important;
+    }
+
+    .qc-topup-form-row button {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .qc-customer-subtabs-bar {
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+        padding-bottom: 6px !important;
+        scrollbar-width: none !important;
+        -webkit-overflow-scrolling: touch !important;
+        box-sizing: border-box !important;
+    }
+
+    .qc-subtab-btn {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+    }
+
+    .qc-cust-order-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+    }
+
+    .qc-cust-order-header-right {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        border-top: 1px dashed #e2e8f0 !important;
+        padding-top: 6px !important;
+    }
+
+    /* Incidents Tab */
+    .qc-admin-incidents-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .qc-incident-actions {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        width: 100% !important;
+        gap: 6px !important;
+    }
+
+    .qc-incident-actions button {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    /* Themes Tab */
+    .qc-themes-header-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+    }
+
+    .qc-admin-add-theme-btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .qc-themes-card-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Wallet Tab */
+    .qc-wallet-admin-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+    }
+
+    .qc-wallet-admin-header button {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .qc-criteria-filter-pills {
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+        padding-bottom: 6px !important;
+        scrollbar-width: none !important;
+        -webkit-overflow-scrolling: touch !important;
+        box-sizing: border-box !important;
+    }
+
+    .qc-criteria-pill {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        padding: 6px 12px !important;
+        font-size: 12px !important;
+    }
+
+    .qc-user-action-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+
+    .qc-admin-search-box.compact {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    .qc-mode-selector-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Gift Cards & Coupons Layouts */
+    .qc-giftcards-admin-layout,
+    .qc-coupons-admin-layout {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+    }
+
+    /* Admin Modals */
+    .qc-admin-product-modal,
+    .qc-admin-theme-modal,
+    .qc-admin-refund-modal {
+        padding: 18px 14px !important;
+        width: 95% !important;
+        max-width: calc(100vw - 20px) !important;
+        box-sizing: border-box !important;
+    }
+
+    .qc-refund-order-brief {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
     }
 
     .qc-rzp-body {
@@ -9606,7 +10136,7 @@ a.floating-cart-bar,
 /* Directory Grid */
 .qc-customer-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
     gap: 16px;
 }
 
