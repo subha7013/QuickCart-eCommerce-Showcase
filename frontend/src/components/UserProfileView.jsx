@@ -676,7 +676,6 @@ export default function UserProfileView() {
                             onClick={() => setActiveTab('payments')}
                         >
                             <div className="qc-tab-btn-content">
-                                <CreditCard size={18} />
                                 <span>Payment Methods</span>
                             </div>
                             {activeTab === 'payments' && <ChevronRight size={15} className="qc-tab-chevron" />}

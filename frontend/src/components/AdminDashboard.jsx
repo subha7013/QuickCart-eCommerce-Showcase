@@ -2994,7 +2994,7 @@ export default function AdminDashboard() {
                         </button>
                     </div>
 
-                    <div className="qc-giftcards-admin-layout" style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: '24px', alignItems: 'start', marginTop: '20px' }}>
+                    <div className="qc-giftcards-admin-layout">
                         {/* Left: Create New Gift Card Form */}
                         <div className="qc-card" style={{ background: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                             <div className="qc-topup-header" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 800, color: '#0f172a', marginBottom: '16px' }}>
@@ -3181,7 +3181,7 @@ export default function AdminDashboard() {
                         </button>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 360px) minmax(0, 1fr)', gap: '24px', alignItems: 'start', marginTop: '20px' }}>
+                    <div className="qc-coupons-admin-layout">
                         <div className="qc-card" style={{ background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '20px' }}>
                             <h4 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 800 }}>Create Coupon</h4>
                             <form onSubmit={handleCreateCoupon}>
