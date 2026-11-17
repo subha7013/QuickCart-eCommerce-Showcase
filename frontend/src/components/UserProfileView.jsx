@@ -615,7 +615,6 @@ export default function UserProfileView() {
                                 👑 QuickCart VIP Member
                             </span>
                         </div>
-
                     </div>
                 </div>
 

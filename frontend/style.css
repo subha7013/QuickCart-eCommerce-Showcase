@@ -118,7 +118,7 @@ body {
     min-height: 100vh;
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
     position: relative;
 }
 
@@ -126,7 +126,7 @@ body {
     width: 100%;
     max-width: 100%;
     min-height: 100vh;
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
 .qc-app-shell {
@@ -135,7 +135,8 @@ body {
     min-height: 100vh;
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    min-width: 0;
+    overflow-x: clip;
     position: relative;
 }
 
@@ -3121,6 +3122,10 @@ body {
     border: 1px solid var(--qc-border);
     box-shadow: var(--qc-shadow-sm);
     min-height: 520px;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .qc-section-heading-row {
@@ -3130,6 +3135,7 @@ body {
     gap: 16px;
     margin-bottom: 20px;
     flex-wrap: wrap;
+    min-width: 0;
 }
 
 .qc-section-heading-row h3 {
@@ -3149,6 +3155,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    min-width: 0;
+    width: 100%;
 }
 
 .qc-order-card {
@@ -3157,6 +3165,10 @@ body {
     border-radius: var(--qc-radius-lg);
     padding: 18px 20px;
     box-shadow: var(--qc-shadow-sm);
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .qc-order-card-header {
@@ -3235,6 +3247,16 @@ body {
     padding: 4px 10px;
     border-radius: var(--qc-radius-md);
     font-size: 12px;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.qc-order-item-pill span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 240px;
 }
 
 .qc-order-item-pill img {
@@ -3320,7 +3342,7 @@ body {
 /* Addresses Grid in Profile */
 .qc-addresses-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
     gap: 16px;
     margin-top: 16px;
 }
@@ -3566,6 +3588,224 @@ body {
     font-size: 12px;
     color: var(--qc-text-muted);
     margin-top: 6px;
+}
+
+/* Payment Methods Tab in Profile */
+.qc-payments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+    gap: 16px;
+    margin-top: 18px;
+}
+
+.qc-payment-method-card {
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.qc-payment-method-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+    transform: translateY(-1px);
+}
+
+.qc-pm-icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.qc-pm-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.qc-pm-details strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.qc-pm-details small {
+    display: block;
+    font-size: 11.5px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.qc-pm-default-badge {
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+}
+
+.qc-payment-method-card.add-new {
+    border: 1.5px dashed #cbd5e1;
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 600;
+    font-size: 13.5px;
+    justify-content: center;
+}
+
+.qc-payment-method-card.add-new:hover {
+    border-color: #2563eb;
+    color: #2563eb;
+    background: #eff6ff;
+}
+
+/* Wishlist Tab in Profile */
+.qc-wishlist-grid-view {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+    gap: 16px;
+    margin-top: 18px;
+}
+
+.qc-wishlist-item-card {
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+    transition: all 0.2s ease;
+}
+
+.qc-wishlist-item-card:hover {
+    border-color: #cbd5e1;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.qc-wishlist-item-img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    background: #f8fafc;
+}
+
+.qc-wishlist-item-info {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 8px;
+}
+
+.qc-wishlist-item-info h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.qc-wishlist-pricing {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.qc-wishlist-price {
+    font-size: 16px;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.qc-wishlist-original-price {
+    font-size: 13px;
+    color: #94a3b8;
+    text-decoration: line-through;
+}
+
+.qc-wishlist-discount {
+    font-size: 11px;
+    font-weight: 800;
+    color: #16a34a;
+    background: #dcfce7;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.qc-wishlist-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px dashed var(--qc-border-light);
+}
+
+.qc-wishlist-add-cart-btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--qc-primary, #2874f0);
+    color: #ffffff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.qc-wishlist-add-cart-btn:hover {
+    background: var(--qc-primary-dark, #1e5fc2);
+}
+
+.qc-wishlist-remove-btn {
+    background: #fef2f2;
+    color: #ef4444;
+    border: 1px solid #fee2e2;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.qc-wishlist-remove-btn:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
 }
 
 /* ==========================================================================
@@ -5548,6 +5788,59 @@ a,
         gap: 8px;
     }
 
+    .qc-tray-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+        padding: 12px !important;
+    }
+
+    .qc-addresses-grid,
+    .qc-payments-grid,
+    .qc-wishlist-grid-view,
+    .qc-saved-addresses-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .qc-redeem-form {
+        flex-direction: column !important;
+        width: 100% !important;
+    }
+
+    .qc-order-meta-left {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        flex-wrap: wrap !important;
+        gap: 4px !important;
+    }
+
+    .qc-order-meta-right {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        padding-top: 6px !important;
+        border-top: 1px dashed var(--qc-border-light) !important;
+    }
+
+    .qc-tab-chevron {
+        display: none !important;
+    }
+
+    .qc-checkout-stepper-wrap {
+        padding: 12px 14px !important;
+        gap: 10px !important;
+    }
+
+    .qc-checkout-stepper {
+        gap: 6px !important;
+    }
+
+    .qc-step-line {
+        width: 16px !important;
+    }
+
     .qc-rzp-body {
         grid-template-columns: 1fr;
     }
@@ -5743,6 +6036,10 @@ a,
 
 /* 6. Standard Mobile Phones (<= 480px) */
 @media (max-width: 480px) {
+    .qc-step-text {
+        display: none !important;
+    }
+
     .qc-main-content {
         padding: 8px 8px 36px;
     }
@@ -9533,7 +9830,7 @@ a.floating-cart-bar,
     margin-bottom: 24px;
 }
 
-.qc-profile-hero-left {
+.qc-customer-profile-hero .qc-profile-hero-left {
     display: flex;
     align-items: center;
     gap: 16px;
@@ -9553,20 +9850,20 @@ a.floating-cart-bar,
     box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
 }
 
-.qc-profile-title-row {
+.qc-customer-profile-hero .qc-profile-title-row {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
-.qc-profile-title-row h4 {
+.qc-customer-profile-hero .qc-profile-title-row h4 {
     margin: 0;
     font-size: 18px;
     font-weight: 800;
     color: #0f172a;
 }
 
-.qc-vip-badge {
+.qc-customer-profile-hero .qc-vip-badge {
     background: linear-gradient(135deg, #fef3c7, #fde68a);
     color: #92400e;
     font-size: 11px;
@@ -9576,7 +9873,7 @@ a.floating-cart-bar,
     border: 1px solid #fcd34d;
 }
 
-.qc-profile-submeta {
+.qc-customer-profile-hero .qc-profile-submeta {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -9586,7 +9883,7 @@ a.floating-cart-bar,
     flex-wrap: wrap;
 }
 
-.qc-profile-hero-stats {
+.qc-customer-profile-hero .qc-profile-hero-stats {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
@@ -11731,7 +12028,7 @@ a.floating-cart-bar,
 /* 5. Saved Addresses Grid */
 .qc-saved-addresses-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
     gap: 18px;
     margin-bottom: 24px;
 }
@@ -12437,7 +12734,7 @@ a.floating-cart-bar,
 /* 11. Profile Addresses Tab Grid */
 .qc-addresses-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
     gap: 16px;
     margin-top: 18px;
 }
