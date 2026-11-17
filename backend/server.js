@@ -376,18 +376,41 @@ app.post("/api/login", async (req, res) => {
 // Google OAuth Sign-in & Auto-registration
 app.post("/api/auth/google", async (req, res) => {
   try {
-    const { credential, email: directEmail, name, googleId: directGoogleId } = req.body;
-    let email = directEmail;
-    let googleId = directGoogleId;
+    const { credential, accessToken } = req.body;
+    let email = null;
+    let googleId = null;
 
-    if (credential) {
+    if (accessToken) {
       try {
-        const parts = credential.split(".");
-        if (parts.length === 3) {
-          const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf8"));
-          if (payload && payload.email) {
-            email = payload.email.toLowerCase();
-            googleId = payload.sub || googleId;
+        const userinfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        if (userinfoRes.ok) {
+          const userinfo = await userinfoRes.json();
+          email = userinfo.email;
+          googleId = userinfo.sub;
+        } else {
+          console.warn("Google userinfo fetch failed with status:", userinfoRes.status);
+        }
+      } catch (e) {
+        console.error("Failed to fetch Google userinfo:", e);
+      }
+    } else if (credential) {
+      try {
+        const tokeninfoRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+        if (tokeninfoRes.ok) {
+          const tokenData = await tokeninfoRes.json();
+          email = tokenData.email;
+          googleId = tokenData.sub;
+        } else {
+          // Fallback to JWT payload decoding
+          const parts = credential.split(".");
+          if (parts.length === 3) {
+            const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf8"));
+            if (payload && payload.email) {
+              email = payload.email.toLowerCase();
+              googleId = payload.sub || googleId;
+            }
           }
         }
       } catch (e) {
@@ -396,7 +419,7 @@ app.post("/api/auth/google", async (req, res) => {
     }
 
     if (!email) {
-      return res.status(400).json({ ok: false, msg: "Google authentication failed: Email missing" });
+      return res.status(400).json({ ok: false, msg: "Google authentication failed: Could not verify Google account" });
     }
 
     email = email.toLowerCase().trim();
