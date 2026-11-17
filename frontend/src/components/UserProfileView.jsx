@@ -60,40 +60,63 @@ export default function UserProfileView() {
     const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
     const turnstileContainerRef = useRef(null);
     const turnstileWidgetIdRef = useRef(null);
+    const tokenClientRef = useRef(null);
 
-    // Initialize Google Identity Services if client ID is configured
+    // Initialize Google OAuth Token Client (opens official account chooser popup)
     useEffect(() => {
         const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-        if (!googleClientId || !window.google?.accounts?.id) return;
+        if (!googleClientId) return;
 
-        try {
-            window.google.accounts.id.initialize({
-                client_id: googleClientId,
-                callback: async (response) => {
-                    if (!response?.credential) return;
-                    setIsGoogleSigningIn(true);
-                    try {
-                        const res = await api('/api/auth/google', {
-                            method: 'POST',
-                            body: JSON.stringify({ credential: response.credential })
-                        });
-                        if (res.ok) {
-                            showToast('Signed in with Google successfully! 🎉');
-                            await fetchMe();
-                            await loadOrders();
-                            await fetchProductStock();
-                        } else {
-                            showToast(res.msg || 'Google sign-in failed ❌');
+        const setupTokenClient = () => {
+            if (window.google?.accounts?.oauth2) {
+                try {
+                    tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+                        client_id: googleClientId,
+                        scope: 'email profile openid',
+                        prompt: 'select_account',
+                        callback: async (tokenResponse) => {
+                            if (tokenResponse?.access_token) {
+                                setIsGoogleSigningIn(true);
+                                try {
+                                    const res = await api('/api/auth/google', {
+                                        method: 'POST',
+                                        body: JSON.stringify({ accessToken: tokenResponse.access_token })
+                                    });
+                                    if (res.ok) {
+                                        showToast('Signed in with Google successfully! 🎉');
+                                        await fetchMe();
+                                        await loadOrders();
+                                        await fetchProductStock();
+                                    } else {
+                                        showToast(res.msg || 'Google sign-in failed ❌');
+                                    }
+                                } catch (e) {
+                                    showToast('Failed to sign in with Google ❌');
+                                } finally {
+                                    setIsGoogleSigningIn(false);
+                                }
+                            } else if (tokenResponse?.error) {
+                                console.warn('Google sign-in error:', tokenResponse.error);
+                                setIsGoogleSigningIn(false);
+                            }
                         }
-                    } catch (err) {
-                        showToast('Failed to sign in with Google ❌');
-                    } finally {
-                        setIsGoogleSigningIn(false);
-                    }
+                    });
+                } catch (err) {
+                    console.warn('Google OAuth2 client init error:', err);
                 }
-            });
-        } catch (e) {
-            console.warn('Google Identity initialization error:', e);
+            }
+        };
+
+        if (window.google?.accounts?.oauth2) {
+            setupTokenClient();
+        } else {
+            const timer = setInterval(() => {
+                if (window.google?.accounts?.oauth2) {
+                    setupTokenClient();
+                    clearInterval(timer);
+                }
+            }, 250);
+            return () => clearInterval(timer);
         }
     }, []);
 
@@ -334,45 +357,56 @@ export default function UserProfileView() {
 
     async function handleGoogleSignIn() {
         const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-        setIsGoogleSigningIn(true);
-        try {
-            if (googleClientId && window.google?.accounts?.id) {
-                window.google.accounts.id.prompt((notification) => {
-                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                        console.log('Google prompt not displayed / skipped:', notification);
-                    }
-                });
-            } else {
-                // Smooth prompt fallback for testing without Google Cloud Console credentials
-                const emailInput = window.prompt(
-                    'Enter your Google account email to sign in (One-click Google Auth):',
-                    'user@gmail.com'
-                );
-                if (emailInput && emailInput.includes('@')) {
-                    const cleanEmail = emailInput.trim().toLowerCase();
-                    const res = await api('/api/auth/google', {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            email: cleanEmail,
-                            name: cleanEmail.split('@')[0],
-                            googleId: 'g_' + Math.random().toString(36).substring(2, 12)
-                        })
+        if (!googleClientId) {
+            showToast('Google Client ID is not configured. Please set VITE_GOOGLE_CLIENT_ID in .env ⚠️');
+            return;
+        }
+
+        if (!tokenClientRef.current) {
+            if (window.google?.accounts?.oauth2) {
+                try {
+                    tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+                        client_id: googleClientId,
+                        scope: 'email profile openid',
+                        prompt: 'select_account',
+                        callback: async (tokenResponse) => {
+                            if (tokenResponse?.access_token) {
+                                setIsGoogleSigningIn(true);
+                                try {
+                                    const res = await api('/api/auth/google', {
+                                        method: 'POST',
+                                        body: JSON.stringify({ accessToken: tokenResponse.access_token })
+                                    });
+                                    if (res.ok) {
+                                        showToast('Signed in with Google successfully! 🎉');
+                                        await fetchMe();
+                                        await loadOrders();
+                                        await fetchProductStock();
+                                    } else {
+                                        showToast(res.msg || 'Google sign-in failed ❌');
+                                    }
+                                } catch (e) {
+                                    showToast('Failed to sign in with Google ❌');
+                                } finally {
+                                    setIsGoogleSigningIn(false);
+                                }
+                            } else if (tokenResponse?.error) {
+                                console.warn('Google sign-in error:', tokenResponse.error);
+                                setIsGoogleSigningIn(false);
+                            }
+                        }
                     });
-                    if (res.ok) {
-                        showToast('Signed in with Google! Welcome to QuickCart 🎉');
-                        await fetchMe();
-                        await loadOrders();
-                        await fetchProductStock();
-                    } else {
-                        showToast(res.msg || 'Google sign-in failed ❌');
-                    }
+                } catch (e) {
+                    console.error('Failed to init Google OAuth2 client on click:', e);
                 }
             }
-        } catch (err) {
-            console.error('Google Sign-in error:', err);
-            showToast('Google sign-in encountered an issue ❌');
-        } finally {
-            setIsGoogleSigningIn(false);
+        }
+
+        if (tokenClientRef.current) {
+            // Opens the official Google Account Selector popup displaying all connected accounts
+            tokenClientRef.current.requestAccessToken({ prompt: 'select_account' });
+        } else {
+            showToast('Google Sign-In is initializing. Please try again in a moment ⏳');
         }
     }
 
