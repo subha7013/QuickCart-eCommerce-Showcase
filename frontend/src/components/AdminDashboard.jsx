@@ -364,24 +364,26 @@ export default function AdminDashboard() {
 
     async function handleAdminLogin(e) {
         e.preventDefault();
+        const cleanKey = (inputKey || '').trim();
+        if (!cleanKey) return;
         try {
             const res = await fetch(BASE_URL + '/api/admin/products', {
-                headers: { 'x-admin-key': inputKey },
+                headers: { 'x-admin-key': cleanKey },
                 credentials: 'include'
             });
             const data = await res.json();
             if (data.ok) {
-                setAdminKey(inputKey);
+                setAdminKey(cleanKey);
                 setIsAdmin(true);
-                sessionStorage.setItem('qc_admin_key', inputKey);
+                sessionStorage.setItem('qc_admin_key', cleanKey);
                 sessionStorage.setItem('qc_is_admin', 'true');
                 setAdminProducts(data.products || []);
                 showToast('Admin authentication successful 🛡️');
-                await loadAdminOrders(inputKey);
-                await loadAdminIncidents(inputKey);
-                await loadAdminCustomers(null, null, inputKey);
+                await loadAdminOrders(cleanKey);
+                await loadAdminIncidents(cleanKey);
+                await loadAdminCustomers(null, null, cleanKey);
             } else {
-                showToast('Invalid admin secret key ❌');
+                showToast(data.msg || 'Invalid admin secret key ❌');
             }
         } catch (err) {
             showToast('Failed to authenticate with backend ❌');

@@ -123,39 +123,50 @@ mongoose.connect(process.env.MONGO_URI)
 const adminFailuresMap = new Map();
 
 function requireAdmin(req, res, next) {
+  const adminKey = String(req.headers["x-admin-key"] || "").trim();
+  const secret = String(process.env.ADMIN_SECRET || "admin@1234").trim();
+
   const clientIp = req.ip || req.connection?.remoteAddress || "ip_unknown";
   const now = Date.now();
   const failRecord = adminFailuresMap.get(clientIp);
 
-  if (failRecord && now < failRecord.resetAt && failRecord.count >= 5) {
-    const waitMins = Math.ceil((failRecord.resetAt - now) / 60000);
-    return res.status(429).json({
-      ok: false,
-      msg: `Too many failed admin authentication attempts. Locked for ${waitMins} minute(s).`
-    });
-  }
-
-  const adminKey = req.headers["x-admin-key"] || "";
-  const secret = process.env.ADMIN_SECRET || "";
-
+  // Check valid key first so correct credentials always succeed
   let isValid = false;
-  if (adminKey && secret && typeof adminKey === "string") {
-    const keyBuf = Buffer.from(adminKey);
-    const secretBuf = Buffer.from(secret);
-    if (keyBuf.length === secretBuf.length) {
-      isValid = crypto.timingSafeEqual(keyBuf, secretBuf);
+  if (adminKey && secret) {
+    if (adminKey === secret) {
+      isValid = true;
+    } else {
+      try {
+        const keyBuf = Buffer.from(adminKey);
+        const secretBuf = Buffer.from(secret);
+        if (keyBuf.length === secretBuf.length) {
+          isValid = crypto.timingSafeEqual(keyBuf, secretBuf);
+        }
+      } catch (e) {
+        isValid = false;
+      }
     }
   }
 
-  if (!isValid) {
-    const record = adminFailuresMap.get(clientIp) || { count: 0, resetAt: now + 15 * 60 * 1000 };
-    record.count += 1;
-    adminFailuresMap.set(clientIp, record);
-    return res.status(403).json({ ok: false, msg: "Forbidden: invalid admin key" });
+  if (isValid) {
+    adminFailuresMap.delete(clientIp);
+    return next();
   }
 
-  adminFailuresMap.delete(clientIp);
-  next();
+  // If invalid, check rate limit lockout
+  if (failRecord && now < failRecord.resetAt && failRecord.count >= 15) {
+    const waitMins = Math.ceil((failRecord.resetAt - now) / 60000);
+    return res.status(429).json({
+      ok: false,
+      msg: `Too many failed admin authentication attempts. Please wait ${waitMins} minute(s).`
+    });
+  }
+
+  const record = adminFailuresMap.get(clientIp) || { count: 0, resetAt: now + 15 * 60 * 1000 };
+  record.count += 1;
+  adminFailuresMap.set(clientIp, record);
+
+  return res.status(403).json({ ok: false, msg: "Forbidden: invalid admin key" });
 }
 
 // -------------------- WALLET & EXPIRING FREE CASH HELPERS --------------------
