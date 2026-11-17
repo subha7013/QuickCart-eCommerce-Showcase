@@ -284,11 +284,56 @@ function revokeUserFreeCash(user, amountToRevoke, reason = "Admin Credit Revocat
   return actuallyRevoked;
 }
 
-// -------------------- AUTH ROUTES --------------------
-app.post("/api/register", async (req, res) => {
-  const { email, phone, password } = req.body;
+// -------------------- AUTH ROUTES & VERIFICATION --------------------
+const registrationRateMap = new Map();
 
-  const exists = await User.findOne({ email });
+app.post("/api/register", async (req, res) => {
+  const { email, phone, password, turnstileToken } = req.body;
+
+  // 1. IP Registration Rate Limiting (max 5 new registrations per hour per IP)
+  const clientIp = req.ip || req.connection?.remoteAddress || "reg_ip_unknown";
+  const now = Date.now();
+  const regRecord = registrationRateMap.get(clientIp);
+  if (regRecord && now < regRecord.resetAt && regRecord.count >= 5) {
+    const waitMins = Math.ceil((regRecord.resetAt - now) / 60000);
+    return res.status(429).json({
+      ok: false,
+      msg: `Too many registration attempts from this device. Please try again in ${waitMins} minute(s).`
+    });
+  }
+
+  // 2. Cloudflare Turnstile Verification on Registration
+  const cfSecret = (process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA").trim();
+  if (cfSecret && cfSecret !== "skip" && cfSecret !== "disabled") {
+    if (!turnstileToken) {
+      return res.json({ ok: false, msg: "Please complete Cloudflare security verification 🛡️" });
+    }
+    try {
+      const cleanToken = String(turnstileToken).trim();
+      const cfRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: cfSecret,
+          response: cleanToken
+        })
+      });
+      const cfData = await cfRes.json();
+      if (!cfData.success) {
+        return res.json({ ok: false, msg: "Cloudflare verification failed. Please try again 🛡️" });
+      }
+    } catch (cfErr) {
+      console.error("Cloudflare registration verification network error:", cfErr);
+      return res.json({ ok: false, msg: "Cloudflare verification error. Please try again 🛡️" });
+    }
+  }
+
+  if (!email || !password || typeof email !== "string" || typeof password !== "string") {
+    return res.status(400).json({ ok: false, msg: "Valid email and password are required" });
+  }
+
+  const cleanEmail = email.toLowerCase().trim();
+  const exists = await User.findOne({ email: cleanEmail });
   if (exists) return res.json({ ok: false, msg: "Email already registered" });
 
   const hash = await bcrypt.hash(password, 10);
@@ -296,8 +341,8 @@ app.post("/api/register", async (req, res) => {
   welcomeExpiry.setDate(welcomeExpiry.getDate() + 60);
 
   const user = await User.create({
-    email,
-    phone,
+    email: cleanEmail,
+    phone: phone || "",
     passwordHash: hash,
     hasPassword: true,
     authProvider: "local",
@@ -315,12 +360,23 @@ app.post("/api/register", async (req, res) => {
     ],
     addresses: [],
     savedPaymentMethods: [
-      { id: "upi_def", type: "upi", details: (email.split("@")[0] || "user") + "@okaxis", isDefault: true }
+      { id: "upi_def", type: "upi", details: (cleanEmail.split("@")[0] || "user") + "@okaxis", isDefault: true }
     ]
   });
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-  res.cookie("token", token, { httpOnly: true, sameSite: "none", secure: true });
+  // Track successful registration in IP rate limiter
+  const record = registrationRateMap.get(clientIp) || { count: 0, resetAt: now + 60 * 60 * 1000 };
+  record.count += 1;
+  registrationRateMap.set(clientIp, record);
+
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  res.cookie("token", token, {
+    httpOnly: true,
+    sameSite: "none",
+    secure: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+
   res.json({
     ok: true,
     user: {
@@ -339,26 +395,27 @@ app.post("/api/login", async (req, res) => {
   const { email, password, turnstileToken } = req.body;
 
   // Cloudflare Turnstile Verification
-  const cfSecret = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA";
+  const cfSecret = (process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA").trim();
   if (cfSecret && cfSecret !== "skip" && cfSecret !== "disabled") {
     if (!turnstileToken) {
       return res.json({ ok: false, msg: "Please complete Cloudflare security verification 🛡️" });
     }
     try {
-      const cfParams = new URLSearchParams();
-      cfParams.append("secret", cfSecret);
-      cfParams.append("response", turnstileToken);
-      if (req.ip) cfParams.append("remoteip", req.ip);
-
+      const cleanToken = String(turnstileToken).trim();
       const cfRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
         method: "POST",
-        body: cfParams,
-        headers: { "Content-Type": "application/x-www-form-urlencoded" }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: cfSecret,
+          response: cleanToken
+        })
       });
       const cfData = await cfRes.json();
       if (!cfData.success) {
-        console.warn("Cloudflare Turnstile verification rejected:", cfData["error-codes"]);
-        return res.json({ ok: false, msg: "Cloudflare verification failed. Please try again 🛡️" });
+        const errorCodes = cfData["error-codes"] || [];
+        console.warn("Cloudflare Turnstile verification rejected:", errorCodes);
+        const detail = errorCodes.length > 0 ? ` (${errorCodes.join(", ")})` : "";
+        return res.json({ ok: false, msg: `Cloudflare verification failed${detail}. Please try again 🛡️` });
       }
     } catch (cfErr) {
       console.error("Cloudflare verification network error:", cfErr);
@@ -366,7 +423,12 @@ app.post("/api/login", async (req, res) => {
     }
   }
 
-  const user = await User.findOne({ email });
+  if (!email || !password) {
+    return res.status(400).json({ ok: false, msg: "Email and password are required" });
+  }
+
+  const cleanEmail = String(email).toLowerCase().trim();
+  const user = await User.findOne({ email: cleanEmail });
   if (!user) return res.json({ ok: false, msg: "User not found" });
 
   if (!user.passwordHash) {
@@ -382,8 +444,14 @@ app.post("/api/login", async (req, res) => {
   refreshUserWallet(user);
   await user.save();
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-  res.cookie("token", token, { httpOnly: true, sameSite: "none", secure: true });
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+  res.cookie("token", token, {
+    httpOnly: true,
+    sameSite: "none",
+    secure: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+
   res.json({
     ok: true,
     user: {
@@ -486,8 +554,13 @@ app.post("/api/auth/google", async (req, res) => {
       await user.save();
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-    res.cookie("token", token, { httpOnly: true, sameSite: "none", secure: true });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "none",
+      secure: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
 
     return res.json({
       ok: true,
@@ -618,9 +691,23 @@ app.delete("/api/user/address/:id", requireAuth, async (req, res) => {
   }
 });
 
-// -------------------- GIFT CARD / FREE CASH (SECURE REDEMPTION) --------------------
+// -------------------- GIFT CARD / FREE CASH (SECURE REDEMPTION & BRUTE FORCE SHIELD) --------------------
+const voucherAttemptsMap = new Map();
+
 app.post("/api/user/redeem-giftcard", requireAuth, async (req, res) => {
   try {
+    const userKey = req.user.id;
+    const now = Date.now();
+    const failRecord = voucherAttemptsMap.get(userKey);
+
+    if (failRecord && now < failRecord.resetAt && failRecord.count >= 5) {
+      const waitMins = Math.ceil((failRecord.resetAt - now) / 60000);
+      return res.status(429).json({
+        ok: false,
+        msg: `Too many failed voucher attempts. Please wait ${waitMins} minute(s) before trying again.`
+      });
+    }
+
     const { code } = req.body;
     if (!code || typeof code !== "string" || !code.trim()) {
       return res.status(400).json({ ok: false, msg: "Please enter a valid gift card or voucher code." });
@@ -631,6 +718,9 @@ app.post("/api/user/redeem-giftcard", requireAuth, async (req, res) => {
     // 1. Verify gift card exists in database
     const card = await GiftCard.findOne({ code: trimmed });
     if (!card) {
+      const record = voucherAttemptsMap.get(userKey) || { count: 0, resetAt: now + 15 * 60 * 1000 };
+      record.count += 1;
+      voucherAttemptsMap.set(userKey, record);
       return res.status(404).json({
         ok: false,
         msg: `Gift card code "${trimmed}" is invalid or does not exist.`
@@ -710,6 +800,8 @@ app.post("/api/user/redeem-giftcard", requireAuth, async (req, res) => {
       card.isActive = false;
     }
     await card.save();
+
+    voucherAttemptsMap.delete(userKey);
 
     res.json({
       ok: true,
@@ -1802,12 +1894,12 @@ app.delete("/api/admin/themes/:id", requireAdmin, async (req, res) => {
   }
 });
 
-// -------------------- PUBLIC ORDER TRACKING (NO LOGIN REQUIRED) --------------------
+// -------------------- PUBLIC ORDER TRACKING (PRIVACY SAFEGUARDED) --------------------
 app.get("/api/orders/track/:query", async (req, res) => {
   try {
     const rawQuery = (req.params.query || "").trim();
-    if (!rawQuery) {
-      return res.json({ ok: false, msg: "Please provide a valid Order ID or Tracking ID" });
+    if (!rawQuery || rawQuery.length < 6) {
+      return res.json({ ok: false, msg: "Please provide a valid full Order ID or Tracking ID (min 6 characters)" });
     }
 
     let order = null;
@@ -1836,31 +1928,57 @@ app.get("/api/orders/track/:query", async (req, res) => {
         .lean();
     }
 
-    // 4. Try suffix match if user entered just numbers or last few chars
-    if (!order && rawQuery.length >= 4) {
-      const recentOrders = await Order.find({})
-        .select("-__v")
-        .populate("userId", "email phone")
-        .sort({ createdAt: -1 })
-        .limit(200)
-        .lean();
-
-      order = recentOrders.find(o => {
-        const idStr = o._id.toString();
-        const trkStr = (o.trackingId || "").toUpperCase();
-        const qUpper = rawQuery.toUpperCase();
-        return idStr.endsWith(rawQuery) || trkStr === qUpper || trkStr.endsWith(qUpper) || (o.paymentId && o.paymentId === rawQuery);
-      });
-    }
-
     if (!order) {
       return res.json({ ok: false, msg: "No order found matching this Tracking ID or Order ID." });
     }
 
+    // Mask sensitive customer PII to protect privacy
+    function maskCustomerName(name) {
+      if (!name || typeof name !== "string") return "Customer";
+      return name
+        .split(" ")
+        .map(w => w.length > 1 ? w[0] + "*".repeat(Math.min(3, w.length - 1)) : w)
+        .join(" ");
+    }
+
+    function maskPhone(phone) {
+      if (!phone || typeof phone !== "string") return "";
+      const digits = phone.replace(/\D/g, "");
+      if (digits.length >= 10) {
+        return "+91 ******" + digits.slice(-4);
+      }
+      return "******" + phone.slice(-4);
+    }
+
+    const maskedAddress = order.address ? {
+      name: maskCustomerName(order.address.name),
+      phone: maskPhone(order.address.phone),
+      city: order.address.city || "",
+      state: order.address.state || "",
+      pincode: order.address.pincode || ""
+    } : null;
+
     const sanitizedOrder = {
-      ...order,
+      _id: order._id,
       trackingId: order.trackingId || ('QC-TRK-' + order._id.toString().slice(-6)),
-      customerName: order.address?.name || order.userId?.email?.split('@')[0] || 'Customer'
+      customerName: maskCustomerName(order.address?.name || order.userId?.email?.split('@')[0] || 'Customer'),
+      status: order.status || "placed",
+      estimatedDelivery: order.estimatedDelivery || "Today in 12-15 Mins",
+      createdAt: order.createdAt,
+      items: (order.items || []).map(i => ({
+        id: i.id,
+        name: i.name,
+        price: i.price,
+        qty: i.qty,
+        image: i.image
+      })),
+      subtotal: order.subtotal,
+      deliveryFee: order.deliveryFee,
+      couponDiscount: order.couponDiscount,
+      freeCashUsed: order.freeCashUsed,
+      total: order.total,
+      paymentMethod: order.paymentMethod,
+      address: maskedAddress
     };
 
     res.json({ ok: true, order: sanitizedOrder });

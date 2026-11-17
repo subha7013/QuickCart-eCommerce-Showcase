@@ -120,9 +120,9 @@ export default function UserProfileView() {
         }
     }, []);
 
-    // Render Cloudflare Turnstile when on login tab
+    // Render Cloudflare Turnstile when on login or signup tab
     useEffect(() => {
-        if (authMode !== 'login') {
+        if (authMode !== 'login' && authMode !== 'signup') {
             if (turnstileWidgetIdRef.current && window.turnstile) {
                 try {
                     window.turnstile.remove(turnstileWidgetIdRef.current);
@@ -443,12 +443,20 @@ export default function UserProfileView() {
             showToast('Passwords do not match ❌');
             return;
         }
+
+        const token = turnstileToken || (window.turnstile && turnstileWidgetIdRef.current ? window.turnstile.getResponse(turnstileWidgetIdRef.current) : '');
+        if (!token) {
+            showToast('Please complete Cloudflare security verification 🛡️');
+            return;
+        }
+
         const res = await api('/api/register', {
             method: 'POST',
             body: JSON.stringify({
                 email: signupForm.email,
                 phone: signupForm.phone,
-                password: signupForm.password
+                password: signupForm.password,
+                turnstileToken: token
             }),
         });
         if (res.ok) {
@@ -457,6 +465,12 @@ export default function UserProfileView() {
             await loadOrders();
         } else {
             showToast(res.msg || 'Registration failed ❌');
+            if (window.turnstile && turnstileWidgetIdRef.current) {
+                try {
+                    window.turnstile.reset(turnstileWidgetIdRef.current);
+                } catch (e) {}
+                setTurnstileToken('');
+            }
         }
     }
 
@@ -661,6 +675,15 @@ export default function UserProfileView() {
                                     onChange={(e) => setSignupForm({ ...signupForm, confirmPassword: e.target.value })}
                                     required
                                 />
+                            </div>
+
+                            {/* Cloudflare Turnstile Security Verification Widget */}
+                            <div className="qc-turnstile-wrapper">
+                                <div className="qc-turnstile-label">
+                                    <Shield size={14} />
+                                    <span>Cloudflare Security Verification</span>
+                                </div>
+                                <div ref={turnstileContainerRef} className="qc-turnstile-box"></div>
                             </div>
 
                             <button type="submit" className="qc-auth-submit-btn">
