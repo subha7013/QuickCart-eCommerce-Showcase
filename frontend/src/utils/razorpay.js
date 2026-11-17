@@ -49,7 +49,12 @@ export async function openRazorpayCheckout({
     try {
         const createRes = await api('/api/razorpay/create-order', {
             method: 'POST',
-            body: JSON.stringify({ amount: Number(amount) })
+            body: JSON.stringify({
+                amount: Number(amount),
+                items: orderData.items,
+                couponCode: orderData.couponCode,
+                freeCashUsed: orderData.freeCashUsed || 0
+            })
         });
 
         if (createRes && createRes.ok && createRes.orderId) {
