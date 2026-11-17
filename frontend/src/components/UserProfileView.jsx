@@ -420,7 +420,7 @@ export default function UserProfileView() {
                 headers: { 'x-admin-key': key }
             });
             if (!res.ok) {
-                showToast('Invalid admin secret key ❌');
+                showToast(res.msg || 'Invalid admin secret key ❌');
                 return;
             }
             sessionStorage.setItem('qc_admin_key', key);
