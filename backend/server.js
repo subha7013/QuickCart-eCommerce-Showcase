@@ -337,6 +337,7 @@ app.post("/api/login", async (req, res) => {
       }
     } catch (cfErr) {
       console.error("Cloudflare verification network error:", cfErr);
+      return res.json({ ok: false, msg: "Cloudflare verification error. Please try again 🛡️" });
     }
   }
 
